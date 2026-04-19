@@ -8,6 +8,8 @@ class UCameraManagerComponent;
 class UGlissandoComponent;
 class UDashComponent;
 class UPlayerCharacterInputConfig;
+class UWallJumpComponent;
+class USlamComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -40,9 +42,11 @@ private:
     void Input_SlideStarted();
     void Input_SlideCompleted();
     void Input_DashStarted();
+    void Input_SlamStarted();
     void TickCoyoteTime(float DeltaTime);
     void TickJumpBuffer(float DeltaTime);
     bool CanCoyoteJump() const;
+    
 
     void BindInputActions(UInputComponent* PlayerInputComponent);
     void RegisterInputMappingContext();
@@ -97,4 +101,14 @@ private:
 
     float JumpBufferCounter = 0.f;
     bool  bJumpBuffered     = false;
+
+    //= WallJump
+    UPROPERTY(VisibleAnywhere, Category="Movement")
+    UWallJumpComponent* WallJump;
+
+    //= Slam
+    UPROPERTY(VisibleAnywhere, Category="Movement")
+    USlamComponent* Slam;
+
+    
 };

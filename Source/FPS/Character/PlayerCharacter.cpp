@@ -3,6 +3,8 @@
 #include "Components/CameraManagerComponent.h"
 #include "Components/GlissandoComponent.h"
 #include "Components/DashComponent.h"
+#include "Components/WallJumpComponent.h"
+#include "Components/SlamComponent.h"
 #include "../Input/PlayerCharacterInputConfig.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
@@ -21,7 +23,8 @@ APlayerCharacter::APlayerCharacter()
     CameraManager = CreateDefaultSubobject<UCameraManagerComponent>(TEXT("CameraManager"));
     Glissando     = CreateDefaultSubobject<UGlissandoComponent>(TEXT("Glissando"));
     Dash          = CreateDefaultSubobject<UDashComponent>(TEXT("Dash"));
-
+    WallJump      = CreateDefaultSubobject<UWallJumpComponent>(TEXT("WallJump"));
+    Slam          = CreateDefaultSubobject<USlamComponent>(TEXT("Slam"));
     bUseControllerRotationYaw   = true;
     bUseControllerRotationPitch = false;
 
@@ -38,9 +41,11 @@ APlayerCharacter::APlayerCharacter()
 void APlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
-    CameraManager->Initialize(Camera);
-    Glissando->Initialize(this, Camera);
-    Dash->Initialize(this);
+    CameraManager   ->Initialize(Camera);
+    Glissando       ->Initialize(this, Camera);
+    Dash            ->Initialize(this);
+    WallJump        ->Initialize(this);
+    Slam            ->Initialize(this);
     RegisterInputMappingContext();
 }
 
@@ -89,6 +94,7 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
     EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlideStarted);
     EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
     EIC->BindAction(InputConfig->IA_Dash,  ETriggerEvent::Started,   this, &APlayerCharacter::Input_DashStarted);
+    EIC->BindAction(InputConfig->IA_Slam, ETriggerEvent::Started, this, &APlayerCharacter::Input_SlamStarted);
 }
 
 void APlayerCharacter::Input_Move(const FInputActionValue& Value)
@@ -126,6 +132,10 @@ void APlayerCharacter::Input_JumpStarted()
     {
         Jump();
     }
+    else if (WallJump->IsOnWall() && WallJump->TryWallJump())
+    {
+        // TryWallJump 안에서 처리
+    }
     else if (CanCoyoteJump())
     {
         bCoyoteJumpUsed   = true;
@@ -156,12 +166,14 @@ void APlayerCharacter::Input_SlideCompleted()
 
 void APlayerCharacter::Input_DashStarted()
 {
+    if (Slam->IsSlamming()) Slam->CancelSlam();
     Dash->TryDash();
 }
 
 void APlayerCharacter::Landed(const FHitResult& Hit)
 {
     Super::Landed(Hit);
+    WallJump->ResetWallJumps();
 }
 
 void APlayerCharacter::TickCoyoteTime(float DeltaTime)
@@ -212,4 +224,9 @@ bool APlayerCharacter::CanCoyoteJump() const
     return !GetCharacterMovement()->IsMovingOnGround()
         && CoyoteTimeCounter > 0.f
         && !bCoyoteJumpUsed;
+}
+
+void APlayerCharacter::Input_SlamStarted()
+{
+    Slam->TrySlam();
 }
