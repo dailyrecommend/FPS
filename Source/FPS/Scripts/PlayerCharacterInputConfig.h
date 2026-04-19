@@ -29,4 +29,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	UInputAction* IA_Slide;
+
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	UInputAction* IA_Dash;
 };

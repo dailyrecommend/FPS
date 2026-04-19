@@ -17,6 +17,7 @@ class FPS_API APlayerCharacter : public ACharacter
 
 public:
     APlayerCharacter();
+    virtual void Landed(const FHitResult& Hit) override;
 
 protected:
     virtual void BeginPlay() override;
@@ -97,4 +98,36 @@ private:
     float     CurrentCameraRoll  = 0.f;
     FVector   GlissandoDirection = FVector::ZeroVector;
     FVector2D CurrentMoveInput   = FVector2D::ZeroVector;
+
+    //= Dash
+    void Input_DashStarted();
+    void PerformDash();
+    void TickDash(float DeltaTime);
+    void AddDashCharge();
+
+    UFUNCTION(BlueprintCallable)
+    void AddDashChargeImmediate();
+
+    UPROPERTY(EditDefaultsOnly, Category="Dash")
+    float DashSpeed = 6000.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Dash")
+    float DashDuration = 0.15f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Dash")
+    float DashChargeDelay = 0.5f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Dash")
+    float DashChargeInterval = 1.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Dash")
+    int32 MaxDashCharges = 3;
+
+    bool  bIsDashing       = false;
+    float DashElapsed      = 0.f;
+    int32 DashCharges      = 3;
+    float DashChargeTimer  = 0.f;
+    bool  bDashChargeDelay = false;
+    float DashDelayTimer   = 0.f;
+    FVector DashDirection  = FVector::ZeroVector;
 };

@@ -40,6 +40,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
     TickGlissando(DeltaTime);
+    TickDash(DeltaTime);
     CurrentMoveInput = FVector2D::ZeroVector;
 }
 
@@ -83,6 +84,15 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
     //= Glissando
     EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlideStarted);
     EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
+
+    //= Dash
+    EIC->BindAction(InputConfig->IA_Dash, ETriggerEvent::Started, this, &APlayerCharacter::Input_DashStarted);
+}
+
+void APlayerCharacter::Landed(const FHitResult& Hit)
+{
+    Super::Landed(Hit);
+    DashChargeTimer = 0.f;
 }
 
 void APlayerCharacter::Input_Move(const FInputActionValue& Value)
@@ -218,4 +228,91 @@ void APlayerCharacter::TickGlissando(float DeltaTime)
         ControlRot.Roll     = CurrentCameraRoll;
         PC->SetControlRotation(ControlRot);
     }
+}
+
+//= ====================Dash
+void APlayerCharacter::Input_DashStarted()
+{
+    if (DashCharges <= 0 || bIsDashing) return;
+    PerformDash();
+}
+
+void APlayerCharacter::PerformDash()
+{
+    bIsDashing  = true;
+    DashElapsed = 0.f;
+    DashCharges--;
+    
+    APlayerController* PC = Cast<APlayerController>(Controller);
+    if (PC)
+    {
+        FRotator CamRot = PC->GetControlRotation();
+        DashDirection   = FRotationMatrix(CamRot).GetUnitAxis(EAxis::X);
+        DashDirection.Normalize();
+    }
+
+    if (bIsGlissando) EndGlissando();
+
+    GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
+    
+    bDashChargeDelay = true;
+    DashDelayTimer   = 0.f;
+}
+
+
+void APlayerCharacter::TickDash(float DeltaTime)
+{
+    if (bIsDashing)
+    {
+        DashElapsed += DeltaTime;
+        GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
+
+        if (DashElapsed >= DashDuration)
+        {
+            bIsDashing = false;
+
+            if (GetCharacterMovement()->IsMovingOnGround())
+            {
+                GetCharacterMovement()->Velocity = FVector::ZeroVector;
+            }
+            else
+            {
+                GetCharacterMovement()->Velocity = DashDirection * DefaultMaxWalkSpeed;
+            }
+        }
+    }
+
+    if (bDashChargeDelay)
+    {
+        DashDelayTimer += DeltaTime;
+        if (DashDelayTimer >= DashChargeDelay)
+        {
+            bDashChargeDelay = false;
+            DashChargeTimer  = 0.f;
+        }
+        return;
+    }
+
+    if (DashCharges < MaxDashCharges && GetCharacterMovement()->IsMovingOnGround())
+    {
+        DashChargeTimer += DeltaTime;
+        if (DashChargeTimer >= DashChargeInterval)
+        {
+            DashChargeTimer = 0.f;
+            AddDashCharge();
+        }
+    }
+}
+
+void APlayerCharacter::AddDashCharge()
+{
+    DashCharges = FMath::Min(DashCharges + 1, MaxDashCharges);
+}
+
+void APlayerCharacter::AddDashChargeImmediate()
+{
+    AddDashCharge();
+
+    bDashChargeDelay = false;
+    DashChargeTimer  = 0.f;
 }
