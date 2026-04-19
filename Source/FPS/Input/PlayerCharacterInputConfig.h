@@ -35,4 +35,10 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	UInputAction* IA_Slam;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	UInputAction* IA_Attack;
+
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	UInputAction* IA_WeaponSkill;
 };
