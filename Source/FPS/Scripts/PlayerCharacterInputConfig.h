@@ -26,4 +26,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	UInputAction* IA_Jump;
+
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	UInputAction* IA_Slide;
 };

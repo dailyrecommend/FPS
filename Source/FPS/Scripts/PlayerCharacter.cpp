@@ -11,7 +11,7 @@ APlayerCharacter::APlayerCharacter()
 {
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(GetMesh(), NAME_None);
-    Camera->SetRelativeLocation(FVector(0.f, 0.f, 64.f));
+    Camera->SetRelativeLocation(FVector(0.f, 0.f, DefaultCameraHeight));
     Camera->bUsePawnControlRotation = true;
 
     CameraManager = CreateDefaultSubobject<UCameraManagerComponent>(TEXT("CameraManager"));
@@ -19,18 +19,14 @@ APlayerCharacter::APlayerCharacter()
     bUseControllerRotationYaw   = true;
     bUseControllerRotationPitch = false;
 
-    GetCharacterMovement()->MaxWalkSpeed  = 800.f;
-    GetCharacterMovement()->JumpZVelocity = 800.f;
-
-    GetCharacterMovement()->GroundFriction = 8.f;
-
-    
-    GetCharacterMovement()->BrakingDecelerationWalking = 2048.f;
-
-    GetCharacterMovement()->AirControl = 0.8f;              
-    GetCharacterMovement()->AirControlBoostMultiplier = 0.f;
+    GetCharacterMovement()->MaxWalkSpeed               = DefaultMaxWalkSpeed;
+    GetCharacterMovement()->JumpZVelocity              = DefaultJumpZVelocity;
+    GetCharacterMovement()->GroundFriction             = DefaultGroundFriction;
+    GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
+    GetCharacterMovement()->AirControl                 = DefaultAirControl;
+    GetCharacterMovement()->AirControlBoostMultiplier  = 0.f;
     GetCharacterMovement()->BrakingDecelerationFalling = 0.f;
-    GetCharacterMovement()->FallingLateralFriction = 0.3f;
+    GetCharacterMovement()->FallingLateralFriction     = DefaultFallingLateralFriction;
 }
 
 void APlayerCharacter::BeginPlay()
@@ -38,6 +34,13 @@ void APlayerCharacter::BeginPlay()
     Super::BeginPlay();
     CameraManager->Initialize(Camera);
     RegisterInputMappingContext();
+}
+
+void APlayerCharacter::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+    TickGlissando(DeltaTime);
+    CurrentMoveInput = FVector2D::ZeroVector;
 }
 
 void APlayerCharacter::RegisterInputMappingContext()
@@ -53,7 +56,7 @@ void APlayerCharacter::RegisterInputMappingContext()
 
     if (InputConfig->IMC_KeyboardMouse)
         Subsystem->AddMappingContext(InputConfig->IMC_KeyboardMouse, 0);
-    
+
     if (InputConfig->IMC_Gamepad)
         Subsystem->AddMappingContext(InputConfig->IMC_Gamepad, 1);
 }
@@ -71,15 +74,24 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
     UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
     if (!EIC) return;
 
-    EIC->BindAction(InputConfig->IA_Move, ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Move);
-    EIC->BindAction(InputConfig->IA_Look, ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Look);
-    EIC->BindAction(InputConfig->IA_Jump, ETriggerEvent::Started,   this, &APlayerCharacter::Input_JumpStarted);
-    EIC->BindAction(InputConfig->IA_Jump, ETriggerEvent::Completed,  this, &APlayerCharacter::Input_JumpCompleted);
+    //= Movement & Look
+    EIC->BindAction(InputConfig->IA_Move,  ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Move);
+    EIC->BindAction(InputConfig->IA_Look,  ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Look);
+    EIC->BindAction(InputConfig->IA_Jump,  ETriggerEvent::Started,   this, &APlayerCharacter::Input_JumpStarted);
+    EIC->BindAction(InputConfig->IA_Jump,  ETriggerEvent::Completed, this, &APlayerCharacter::Input_JumpCompleted);
+
+    //= Glissando
+    EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlideStarted);
+    EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
 }
 
 void APlayerCharacter::Input_Move(const FInputActionValue& Value)
 {
     const FVector2D Axis = Value.Get<FVector2D>();
+    CurrentMoveInput = Axis;
+
+    if (bIsGlissando) return;
+
     if (Controller && !Axis.IsZero())
     {
         const FRotator YawRotation(0, Controller->GetControlRotation().Yaw, 0);
@@ -97,10 +109,113 @@ void APlayerCharacter::Input_Look(const FInputActionValue& Value)
 
 void APlayerCharacter::Input_JumpStarted()
 {
-    Jump();
+    if (bIsGlissando)
+    {
+        bIsGlissando = false;
+        Jump();
+        Camera->SetRelativeLocation(FVector(0.f, 0.f, DefaultCameraHeight));
+        CurrentCameraRoll = 0.f;
+        APlayerController* PC = Cast<APlayerController>(Controller);
+        if (PC)
+        {
+            FRotator ControlRot = PC->GetControlRotation();
+            ControlRot.Roll = 0.f;
+            PC->SetControlRotation(ControlRot);
+        }
+        GetCharacterMovement()->GroundFriction             = DefaultGroundFriction;
+        GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
+    }
+    else
+    {
+        Jump();
+    }
 }
 
 void APlayerCharacter::Input_JumpCompleted()
 {
     StopJumping();
+}
+
+void APlayerCharacter::Input_SlideStarted()
+{
+    bWantsGlissando = true;
+    if (CanGlissando()) StartGlissando();
+}
+
+void APlayerCharacter::Input_SlideCompleted()
+{
+    bWantsGlissando = false;
+    EndGlissando();
+}
+
+bool APlayerCharacter::CanGlissando() const
+{
+    return GetCharacterMovement()->IsMovingOnGround()
+        && GetVelocity().Size2D() > GlissandoMinSpeed
+        && !bIsGlissando;
+}
+
+void APlayerCharacter::StartGlissando()
+{
+    bIsGlissando = true;
+
+    GlissandoDirection = GetActorForwardVector();
+    GlissandoDirection.Z = 0.f;
+    GlissandoDirection.Normalize();
+
+    GetCharacterMovement()->Velocity               = GlissandoDirection * GlissandoBoostSpeed;
+    GetCharacterMovement()->GroundFriction         = 0.f;
+    GetCharacterMovement()->BrakingDecelerationWalking = 0.f;
+    Camera->SetRelativeLocation(FVector(0.f, 0.f, DefaultCameraHeight + GlissandoCameraHeight));
+}
+
+void APlayerCharacter::EndGlissando()
+{
+    if (!bIsGlissando) return;
+    bIsGlissando = false;
+
+    GetCharacterMovement()->GroundFriction             = DefaultGroundFriction;
+    GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
+    Camera->SetRelativeLocation(FVector(0.f, 0.f, DefaultCameraHeight));
+    CurrentCameraRoll = 0.f;
+
+    APlayerController* PC = Cast<APlayerController>(Controller);
+    if (PC)
+    {
+        FRotator ControlRot = PC->GetControlRotation();
+        ControlRot.Roll = 0.f;
+        PC->SetControlRotation(ControlRot);
+    }
+}
+
+void APlayerCharacter::TickGlissando(float DeltaTime)
+{
+    if (!bIsGlissando) return;
+
+    float CurrentSpeed = GetVelocity().Size2D();
+
+    if (CurrentSpeed < GlissandoMinSpeed)
+    {
+        EndGlissando();
+        return;
+    }
+
+    FVector GlissandoRight = FVector::CrossProduct(FVector::UpVector, GlissandoDirection);
+    GlissandoRight.Normalize();
+
+    FVector LateralInput   = GlissandoRight * CurrentMoveInput.X * GlissandoLateralControl * DeltaTime;
+    FVector TargetVelocity = GlissandoDirection * GlissandoBoostSpeed + LateralInput;
+    TargetVelocity.Z       = GetCharacterMovement()->Velocity.Z;
+    GetCharacterMovement()->Velocity = TargetVelocity;
+
+    float TargetRoll  = CurrentMoveInput.X * GlissandoCameraRoll;
+    CurrentCameraRoll = FMath::FInterpTo(CurrentCameraRoll, TargetRoll, DeltaTime, GlissandoCameraRollInterpSpeed);
+
+    APlayerController* PC = Cast<APlayerController>(Controller);
+    if (PC)
+    {
+        FRotator ControlRot = PC->GetControlRotation();
+        ControlRot.Roll     = CurrentCameraRoll;
+        PC->SetControlRotation(ControlRot);
+    }
 }

@@ -13,31 +13,88 @@ struct FInputActionValue;
 UCLASS()
 class FPS_API APlayerCharacter : public ACharacter
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	APlayerCharacter();
+    APlayerCharacter();
 
 protected:
-	virtual void BeginPlay() override;
-	
-	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+    virtual void BeginPlay() override;
+    virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
-	UPROPERTY(EditDefaultsOnly, Category="Input")
-	UPlayerCharacterInputConfig* InputConfig;
+    UPROPERTY(EditDefaultsOnly, Category="Input")
+    UPlayerCharacterInputConfig* InputConfig;
 
 private:
-	void Input_Move(const FInputActionValue& Value);
-	void Input_Look(const FInputActionValue& Value);
-	void Input_JumpStarted();
-	void Input_JumpCompleted();
+    //= Movement & Look
+    void Input_Move(const FInputActionValue& Value);
+    void Input_Look(const FInputActionValue& Value);
+    void Input_JumpStarted();
+    void Input_JumpCompleted();
 
-	void BindInputActions(UInputComponent* PlayerInputComponent);
-	void RegisterInputMappingContext();
+    void BindInputActions(UInputComponent* PlayerInputComponent);
+    void RegisterInputMappingContext();
 
-	UPROPERTY(VisibleAnywhere, Category="Camera")
-	UCameraComponent* Camera;
+    UPROPERTY(VisibleAnywhere, Category="Camera")
+    UCameraComponent* Camera;
 
-	UPROPERTY(VisibleAnywhere, Category="Camera")
-	UCameraManagerComponent* CameraManager;
+    UPROPERTY(VisibleAnywhere, Category="Camera")
+    UCameraManagerComponent* CameraManager;
+
+    //= Movement Config
+    UPROPERTY(EditDefaultsOnly, Category="Movement")
+    float DefaultMaxWalkSpeed = 800.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Movement")
+    float DefaultJumpZVelocity = 800.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Movement")
+    float DefaultGroundFriction = 8.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Movement")
+    float DefaultBrakingDeceleration = 2048.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Movement")
+    float DefaultAirControl = 0.8f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Movement")
+    float DefaultFallingLateralFriction = 0.3f;
+
+    //= Camera Config
+    UPROPERTY(EditDefaultsOnly, Category="Camera")
+    float DefaultCameraHeight = 64.f;
+
+    //= Glissando
+    void Input_SlideStarted();
+    void Input_SlideCompleted();
+    void StartGlissando();
+    void EndGlissando();
+    void TickGlissando(float DeltaTime);
+    bool CanGlissando() const;
+
+    virtual void Tick(float DeltaTime) override;
+
+    UPROPERTY(EditDefaultsOnly, Category="Glissando")
+    float GlissandoBoostSpeed = 1600.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Glissando")
+    float GlissandoLateralControl = 4.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Glissando")
+    float GlissandoCameraHeight = -40.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Glissando")
+    float GlissandoCameraRoll = 3.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Glissando")
+    float GlissandoMinSpeed = 100.f;
+
+    UPROPERTY(EditDefaultsOnly, Category="Glissando")
+    float GlissandoCameraRollInterpSpeed = 8.f;
+
+    bool      bIsGlissando       = false;
+    bool      bWantsGlissando    = false;
+    float     CurrentCameraRoll  = 0.f;
+    FVector   GlissandoDirection = FVector::ZeroVector;
+    FVector2D CurrentMoveInput   = FVector2D::ZeroVector;
 };
