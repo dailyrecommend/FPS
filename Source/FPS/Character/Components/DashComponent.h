@@ -19,9 +19,9 @@ public:
 
 	UFUNCTION(BlueprintCallable) void AddDashChargeImmediate();
 
-	UFUNCTION(BlueprintPure) bool  IsDashing()        const { return bIsDashing; }
-	UFUNCTION(BlueprintPure) int32 GetDashCharges()   const { return DashCharges; }
-	UFUNCTION(BlueprintPure) int32 GetMaxDashCharges() const { return MaxDashCharges; }
+	UFUNCTION(BlueprintPure) bool  IsDashing()			const { return bIsDashing; }
+	UFUNCTION(BlueprintPure) int32 GetDashCharges()		const { return DashCharges; }
+	UFUNCTION(BlueprintPure) int32 GetMaxDashCharges()	const { return MaxDashCharges; }
 
 protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,

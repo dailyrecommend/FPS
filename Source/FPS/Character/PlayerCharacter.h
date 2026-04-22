@@ -10,6 +10,7 @@ class UDashComponent;
 class UPlayerCharacterInputConfig;
 class UWallJumpComponent;
 class USlamComponent;
+class UGunComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -23,7 +24,9 @@ public:
     UFUNCTION(BlueprintPure) float GetDefaultCameraHeight()        const { return DefaultCameraHeight; }
     UFUNCTION(BlueprintPure) float GetDefaultGroundFriction()      const { return DefaultGroundFriction; }
     UFUNCTION(BlueprintPure) float GetDefaultBrakingDeceleration() const { return DefaultBrakingDeceleration; }
+    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetArmsMesh() const { return ArmsMesh; }
 
+    
 protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
@@ -43,6 +46,7 @@ private:
     void Input_SlideCompleted();
     void Input_DashStarted();
     void Input_SlamStarted();
+    void Input_AttackStarted();
     void TickCoyoteTime(float DeltaTime);
     void TickJumpBuffer(float DeltaTime);
     bool CanCoyoteJump() const;
@@ -109,6 +113,14 @@ private:
     //= Slam
     UPROPERTY(VisibleAnywhere, Category="Movement")
     USlamComponent* Slam;
+
+    //= Weapon
+    UPROPERTY(VisibleAnywhere, Category="Weapon")
+    UGunComponent* Gun;
+
+    //= ArmMesh
+    UPROPERTY(VisibleAnywhere, Category="Mesh")
+    USkeletalMeshComponent* ArmsMesh;
 
     
 };

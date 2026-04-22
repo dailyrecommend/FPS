@@ -5,6 +5,7 @@
 #include "Components/DashComponent.h"
 #include "Components/WallJumpComponent.h"
 #include "Components/SlamComponent.h"
+#include "Components/GunComponent.h"
 #include "../Input/PlayerCharacterInputConfig.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
@@ -20,32 +21,43 @@ APlayerCharacter::APlayerCharacter()
     Camera->SetRelativeLocation(FVector(0.f, 0.f, DefaultCameraHeight));
     Camera->bUsePawnControlRotation = true;
 
-    CameraManager = CreateDefaultSubobject<UCameraManagerComponent>(TEXT("CameraManager"));
-    Glissando     = CreateDefaultSubobject<UGlissandoComponent>(TEXT("Glissando"));
-    Dash          = CreateDefaultSubobject<UDashComponent>(TEXT("Dash"));
-    WallJump      = CreateDefaultSubobject<UWallJumpComponent>(TEXT("WallJump"));
-    Slam          = CreateDefaultSubobject<USlamComponent>(TEXT("Slam"));
+    CameraManager   = CreateDefaultSubobject<UCameraManagerComponent>(TEXT("CameraManager"));
+    Glissando       = CreateDefaultSubobject<UGlissandoComponent>(TEXT("Glissando"));
+    Dash            = CreateDefaultSubobject<UDashComponent>(TEXT("Dash"));
+    WallJump        = CreateDefaultSubobject<UWallJumpComponent>(TEXT("WallJump"));
+    Slam            = CreateDefaultSubobject<USlamComponent>(TEXT("Slam"));
+    Gun             = CreateDefaultSubobject<UGunComponent>(TEXT("Gun"));
+    ArmsMesh        = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ArmsMesh"));
+    
     bUseControllerRotationYaw   = true;
     bUseControllerRotationPitch = false;
 
-    GetCharacterMovement()->MaxWalkSpeed               = DefaultMaxWalkSpeed;
-    GetCharacterMovement()->JumpZVelocity              = DefaultJumpZVelocity;
-    GetCharacterMovement()->GroundFriction             = DefaultGroundFriction;
-    GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
-    GetCharacterMovement()->AirControl                 = DefaultAirControl;
-    GetCharacterMovement()->AirControlBoostMultiplier  = 0.f;
-    GetCharacterMovement()->BrakingDecelerationFalling = 0.f;
-    GetCharacterMovement()->FallingLateralFriction     = DefaultFallingLateralFriction;
+    GetCharacterMovement()->MaxWalkSpeed                = DefaultMaxWalkSpeed;
+    GetCharacterMovement()->JumpZVelocity               = DefaultJumpZVelocity;
+    GetCharacterMovement()->GroundFriction              = DefaultGroundFriction;
+    GetCharacterMovement()->BrakingDecelerationWalking  = DefaultBrakingDeceleration;
+    GetCharacterMovement()->AirControl                  = DefaultAirControl;
+    GetCharacterMovement()->AirControlBoostMultiplier   = 0.f;
+    GetCharacterMovement()->BrakingDecelerationFalling  = 0.f;
+    GetCharacterMovement()->FallingLateralFriction      = DefaultFallingLateralFriction;
+    
+    ArmsMesh->SetupAttachment(Camera);
+    ArmsMesh->SetOnlyOwnerSee(true);
+    ArmsMesh->bCastDynamicShadow = false;
 }
 
 void APlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
+    
     CameraManager   ->Initialize(Camera);
     Glissando       ->Initialize(this, Camera);
     Dash            ->Initialize(this);
     WallJump        ->Initialize(this);
     Slam            ->Initialize(this);
+    Gun             ->Initialize(this, Camera);
+    ArmsMesh        ->SetupAttachment(Camera);
+    
     RegisterInputMappingContext();
 }
 
@@ -95,6 +107,8 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
     EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
     EIC->BindAction(InputConfig->IA_Dash,  ETriggerEvent::Started,   this, &APlayerCharacter::Input_DashStarted);
     EIC->BindAction(InputConfig->IA_Slam, ETriggerEvent::Started, this, &APlayerCharacter::Input_SlamStarted);
+    EIC->BindAction(InputConfig->IA_Attack, ETriggerEvent::Started, this, &APlayerCharacter::Input_AttackStarted);
+    
 }
 
 void APlayerCharacter::Input_Move(const FInputActionValue& Value)
@@ -229,4 +243,9 @@ bool APlayerCharacter::CanCoyoteJump() const
 void APlayerCharacter::Input_SlamStarted()
 {
     Slam->TrySlam();
+}
+
+void APlayerCharacter::Input_AttackStarted()
+{
+    Gun->TryFire();
 }
