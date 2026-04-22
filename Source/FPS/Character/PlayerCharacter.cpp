@@ -23,6 +23,8 @@ APlayerCharacter::APlayerCharacter()
     Camera->SetRelativeLocation(FVector(0.f, 0.f, DefaultCameraHeight));
     Camera->bUsePawnControlRotation = true;
 
+    
+    
     CameraManager   = CreateDefaultSubobject<UCameraManagerComponent>(TEXT("CameraManager"));
     Glissando       = CreateDefaultSubobject<UGlissandoComponent>(TEXT("Glissando"));
     Dash            = CreateDefaultSubobject<UDashComponent>(TEXT("Dash"));
@@ -70,6 +72,7 @@ void APlayerCharacter::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
     TickCoyoteTime(DeltaTime);
     TickJumpBuffer(DeltaTime);
+
 }
 
 void APlayerCharacter::RegisterInputMappingContext()
@@ -120,7 +123,10 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
 void APlayerCharacter::Input_Move(const FInputActionValue& Value)
 {
     const FVector2D Axis = Value.Get<FVector2D>();
+    CurrentMoveInput = Axis;
     Glissando->OnMoveInput(Axis);
+    Dash->SetMoveInput(Axis);
+    Glissando->OnMoveInput(Axis); // 추가
 
     if (Glissando->IsGlissando()) return;
 
@@ -176,6 +182,7 @@ void APlayerCharacter::Input_JumpCompleted()
 
 void APlayerCharacter::Input_SlideStarted()
 {
+    Glissando->OnMoveInput(CurrentMoveInput);
     if (Glissando->CanGlissando()) Glissando->StartGlissando();
 }
 
@@ -187,6 +194,7 @@ void APlayerCharacter::Input_SlideCompleted()
 void APlayerCharacter::Input_DashStarted()
 {
     if (Slam->IsSlamming()) Slam->CancelSlam();
+    Dash->SetMoveInput(CurrentMoveInput);
     Dash->TryDash();
 }
 

@@ -34,12 +34,32 @@ void UGlissandoComponent::StartGlissando()
 
     bIsGlissando = true;
 
-    GlissandoDirection   = OwnerCharacter->GetActorForwardVector();
-    GlissandoDirection.Z = 0.f;
-    GlissandoDirection.Normalize();
+    APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController());
+    if (PC)
+    {
+        FRotator CamRot = PC->GetControlRotation();
+        FRotationMatrix RotMatrix(FRotator(0, CamRot.Yaw, 0));
 
-    OwnerCharacter->GetCharacterMovement()->Velocity                   = GlissandoDirection * GlissandoBoostSpeed;
-    OwnerCharacter->GetCharacterMovement()->GroundFriction             = 0.f;
+        FVector Forward = RotMatrix.GetUnitAxis(EAxis::X);
+        FVector Right   = RotMatrix.GetUnitAxis(EAxis::Y);
+
+        if (!CurrentMoveInput.IsNearlyZero())
+        {
+            GlissandoDirection = Forward * CurrentMoveInput.Y + Right * CurrentMoveInput.X;
+            GlissandoDirection.Z = 0.f;
+            GlissandoDirection.Normalize();
+        }
+        else
+        {
+            GlissandoDirection = OwnerCharacter->GetActorForwardVector();
+            GlissandoDirection.Z = 0.f;
+            GlissandoDirection.Normalize();
+        }
+    }
+    
+
+    OwnerCharacter->GetCharacterMovement()->Velocity               = GlissandoDirection * GlissandoBoostSpeed;
+    OwnerCharacter->GetCharacterMovement()->GroundFriction         = 0.f;
     OwnerCharacter->GetCharacterMovement()->BrakingDecelerationWalking = 0.f;
     Camera->SetRelativeLocation(FVector(0.f, 0.f, OwnerCharacter->GetDefaultCameraHeight() + GlissandoCameraHeight));
 }
@@ -70,7 +90,6 @@ void UGlissandoComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     TickGlissando(DeltaTime);
     CurrentMoveInput = FVector2D::ZeroVector;
 }
-
 void UGlissandoComponent::TickGlissando(float DeltaTime)
 {
     if (!bIsGlissando || !OwnerCharacter) return;

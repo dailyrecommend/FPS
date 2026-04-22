@@ -35,12 +35,26 @@ void UDashComponent::PerformDash()
     if (PC)
     {
         FRotator CamRot = PC->GetControlRotation();
-        DashDirection   = FRotationMatrix(CamRot).GetUnitAxis(EAxis::X);
-        DashDirection.Normalize();
+        FRotationMatrix RotMatrix(FRotator(0, CamRot.Yaw, 0));
+
+        FVector Forward = RotMatrix.GetUnitAxis(EAxis::X);
+        FVector Right   = RotMatrix.GetUnitAxis(EAxis::Y);
+        
+
+        if (!LastMoveInput.IsNearlyZero())
+        {
+            DashDirection = Forward * LastMoveInput.Y + Right * LastMoveInput.X;
+            DashDirection.Z = 0.f;
+            DashDirection.Normalize();
+        }
+        else
+        {
+            DashDirection = FRotationMatrix(CamRot).GetUnitAxis(EAxis::X);
+            DashDirection.Normalize();
+        }
     }
 
     OwnerCharacter->GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
-
     bDashChargeDelay = true;
     DashDelayTimer   = 0.f;
 }
@@ -50,6 +64,7 @@ void UDashComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
     TickDash(DeltaTime);
+    LastMoveInput = FVector2D::ZeroVector;
 }
 
 void UDashComponent::TickDash(float DeltaTime)

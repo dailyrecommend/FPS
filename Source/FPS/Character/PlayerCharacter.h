@@ -31,7 +31,9 @@ public:
     //= Focus
     UFUNCTION(BlueprintPure) float GetDefaultFOV() const { return DefaultFOV; }
     UFUNCTION(BlueprintPure) float GetLookSensitivityMultiplier() const;
-    
+
+
+    FVector2D CurrentMoveInput = FVector2D::ZeroVector;
 protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;

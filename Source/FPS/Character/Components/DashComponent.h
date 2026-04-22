@@ -16,6 +16,7 @@ public:
 	void Initialize(APlayerCharacter* InOwner);
 
 	void TryDash();
+	void SetMoveInput(FVector2D Input) { LastMoveInput = Input; }
 
 	UFUNCTION(BlueprintCallable) void AddDashChargeImmediate();
 
@@ -56,4 +57,5 @@ private:
 	bool    bDashChargeDelay  = false;
 	float   DashDelayTimer    = 0.f;
 	FVector DashDirection     = FVector::ZeroVector;
+	FVector2D LastMoveInput = FVector2D::ZeroVector;
 };
