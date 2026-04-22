@@ -6,6 +6,7 @@
 #include "Components/WallJumpComponent.h"
 #include "Components/SlamComponent.h"
 #include "Components/GunComponent.h"
+#include "Components/TimeScaleComponent.h"
 #include "../Input/PlayerCharacterInputConfig.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
@@ -18,6 +19,7 @@ APlayerCharacter::APlayerCharacter()
     
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(GetMesh(), NAME_None);
+    Camera->SetFieldOfView(DefaultFOV);
     Camera->SetRelativeLocation(FVector(0.f, 0.f, DefaultCameraHeight));
     Camera->bUsePawnControlRotation = true;
 
@@ -28,6 +30,7 @@ APlayerCharacter::APlayerCharacter()
     Slam            = CreateDefaultSubobject<USlamComponent>(TEXT("Slam"));
     Gun             = CreateDefaultSubobject<UGunComponent>(TEXT("Gun"));
     ArmsMesh        = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ArmsMesh"));
+    TimeScale       = CreateDefaultSubobject<UTimeScaleComponent>(TEXT("TimeScale"));
     
     bUseControllerRotationYaw   = true;
     bUseControllerRotationPitch = false;
@@ -57,6 +60,7 @@ void APlayerCharacter::BeginPlay()
     Slam            ->Initialize(this);
     Gun             ->Initialize(this, Camera);
     ArmsMesh        ->SetupAttachment(Camera);
+    TimeScale       ->Initialize(this);
     
     RegisterInputMappingContext();
 }
@@ -107,7 +111,9 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
     EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
     EIC->BindAction(InputConfig->IA_Dash,  ETriggerEvent::Started,   this, &APlayerCharacter::Input_DashStarted);
     EIC->BindAction(InputConfig->IA_Slam, ETriggerEvent::Started, this, &APlayerCharacter::Input_SlamStarted);
-    EIC->BindAction(InputConfig->IA_Attack, ETriggerEvent::Started, this, &APlayerCharacter::Input_AttackStarted);
+    EIC->BindAction(InputConfig->IA_Attack, ETriggerEvent::Triggered, this, &APlayerCharacter::Input_AttackStarted);
+    EIC->BindAction(InputConfig->IA_WeaponSkill, ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSkillStarted);
+    EIC->BindAction(InputConfig->IA_WeaponSkill, ETriggerEvent::Completed, this, &APlayerCharacter::Input_WeaponSkillCompleted);
     
 }
 
@@ -129,10 +135,10 @@ void APlayerCharacter::Input_Move(const FInputActionValue& Value)
 void APlayerCharacter::Input_Look(const FInputActionValue& Value)
 {
     const FVector2D Axis = Value.Get<FVector2D>();
-    AddControllerYawInput(Axis.X);
-    AddControllerPitchInput(Axis.Y);
+    float Sensitivity    = GetLookSensitivityMultiplier();
+    AddControllerYawInput(Axis.X * Sensitivity);
+    AddControllerPitchInput(Axis.Y * Sensitivity);
 }
-
 void APlayerCharacter::Input_JumpStarted()
 {
     if (Glissando->IsGlissando())
@@ -248,4 +254,21 @@ void APlayerCharacter::Input_SlamStarted()
 void APlayerCharacter::Input_AttackStarted()
 {
     Gun->TryFire();
+}
+
+void APlayerCharacter::Input_WeaponSkillStarted()
+{
+    Gun->StartFocus();
+}
+
+void APlayerCharacter::Input_WeaponSkillCompleted()
+{
+    Gun->EndFocus();
+}
+
+float APlayerCharacter::GetLookSensitivityMultiplier() const
+{
+    if (Gun && Gun->IsFocusing())
+        return Gun->FocusSensitivity;
+    return 1.f;
 }

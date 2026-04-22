@@ -11,6 +11,7 @@ class UPlayerCharacterInputConfig;
 class UWallJumpComponent;
 class USlamComponent;
 class UGunComponent;
+class UTimeScaleComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -25,7 +26,11 @@ public:
     UFUNCTION(BlueprintPure) float GetDefaultGroundFriction()      const { return DefaultGroundFriction; }
     UFUNCTION(BlueprintPure) float GetDefaultBrakingDeceleration() const { return DefaultBrakingDeceleration; }
     UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetArmsMesh() const { return ArmsMesh; }
+    UFUNCTION(BlueprintPure) UTimeScaleComponent* GetTimeScaleComponent() const { return TimeScale; }
 
+    //= Focus
+    UFUNCTION(BlueprintPure) float GetDefaultFOV() const { return DefaultFOV; }
+    UFUNCTION(BlueprintPure) float GetLookSensitivityMultiplier() const;
     
 protected:
     virtual void BeginPlay() override;
@@ -47,6 +52,8 @@ private:
     void Input_DashStarted();
     void Input_SlamStarted();
     void Input_AttackStarted();
+    void Input_WeaponSkillStarted();
+    void Input_WeaponSkillCompleted();
     void TickCoyoteTime(float DeltaTime);
     void TickJumpBuffer(float DeltaTime);
     bool CanCoyoteJump() const;
@@ -91,6 +98,9 @@ private:
     UPROPERTY(EditDefaultsOnly, Category="Camera")
     float DefaultCameraHeight = 64.f;
 
+    UPROPERTY(EditDefaultsOnly, Category="Camera")
+    float DefaultFOV = 90.f;
+
     //= Coyote Time
     UPROPERTY(EditDefaultsOnly, Category="Movement")
     float CoyoteTimeThreshold = 0.15f;
@@ -122,5 +132,8 @@ private:
     UPROPERTY(VisibleAnywhere, Category="Mesh")
     USkeletalMeshComponent* ArmsMesh;
 
-    
+    //= System
+    UPROPERTY(VisibleAnywhere, Category="System")
+    UTimeScaleComponent* TimeScale;
+
 };
