@@ -11,9 +11,11 @@ class UPlayerCharacterInputConfig;
 class UWallJumpComponent;
 class USlamComponent;
 class UGunComponent;
+class UFocusComponent;
 class UTimeScaleComponent;
-struct FInputActionValue;
 class UWeaponSwapComponent;
+class UJumpComponent;
+struct FInputActionValue;
 
 UCLASS()
 class FPS_API APlayerCharacter : public ACharacter
@@ -23,39 +25,36 @@ class FPS_API APlayerCharacter : public ACharacter
 public:
     APlayerCharacter();
 
+    //~ Getters - Movement defaults
     UFUNCTION(BlueprintPure) float GetDefaultCameraHeight()        const { return DefaultCameraHeight; }
     UFUNCTION(BlueprintPure) float GetDefaultGroundFriction()      const { return DefaultGroundFriction; }
     UFUNCTION(BlueprintPure) float GetDefaultBrakingDeceleration() const { return DefaultBrakingDeceleration; }
-    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetArmsMesh() const { return ArmsMesh; }
-    UFUNCTION(BlueprintPure) UTimeScaleComponent* GetTimeScaleComponent() const { return TimeScale; }
+    UFUNCTION(BlueprintPure) float GetDefaultFOV()                 const { return DefaultFOV; }
 
-    //= Focus
-    UFUNCTION(BlueprintPure) float GetDefaultFOV() const { return DefaultFOV; }
+    //~ Getters - Components
+    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetArmsMesh()          const { return ArmsMesh; }
+    UFUNCTION(BlueprintPure) UTimeScaleComponent*    GetTimeScaleComponent() const { return TimeScale; }
+    UFUNCTION(BlueprintPure) UFocusComponent*        GetFocusComponent()     const { return Focus; }
+    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetGunMesh()            const { return GunMesh; }
+    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetSwordMesh()          const { return SwordMesh; }
+
+    //~ Look sensitivity (modulated by Focus state)
     UFUNCTION(BlueprintPure) float GetLookSensitivityMultiplier() const;
 
-
-    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetGunMesh()   const { return GunMesh; }
-    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetSwordMesh() const { return SwordMesh; }
-
-
-    UPROPERTY(EditDefaultsOnly, Category="WeaponSwap")
-    USkeletalMeshComponent* GunMesh;
-
-    UPROPERTY(EditDefaultsOnly, Category="WeaponSwap")
-    USkeletalMeshComponent* SwordMesh;
-    
+    //~ Current move input, read by movement components
     FVector2D CurrentMoveInput = FVector2D::ZeroVector;
+
 protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
     virtual void Landed(const FHitResult& Hit) override;
 
-    UPROPERTY(EditDefaultsOnly, Category="Input")
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
     UPlayerCharacterInputConfig* InputConfig;
 
 private:
-    //= Input
+    //~ Input handlers
     void Input_Move(const FInputActionValue& Value);
     void Input_Look(const FInputActionValue& Value);
     void Input_JumpStarted();
@@ -67,95 +66,85 @@ private:
     void Input_AttackStarted();
     void Input_WeaponSkillStarted();
     void Input_WeaponSkillCompleted();
-    void TickCoyoteTime(float DeltaTime);
-    void TickJumpBuffer(float DeltaTime);
-    bool CanCoyoteJump() const;
-    
-    
-
-    void BindInputActions(UInputComponent* PlayerInputComponent);
-    void RegisterInputMappingContext();
-
     void Input_WeaponSwapGun();
     void Input_WeaponSwapSword();
     void Input_WeaponSwapScroll(const FInputActionValue& Value);
 
-    //= Components
-    UPROPERTY(VisibleAnywhere, Category="Camera")
+    void BindInputActions(UInputComponent* PlayerInputComponent);
+    void RegisterInputMappingContext();
+    void InitializeComponents();
+    void SetupMovementDefaults();
+
+    //~ Components - Camera
+    UPROPERTY(VisibleAnywhere, Category = "Camera")
     UCameraComponent* Camera;
 
-    UPROPERTY(VisibleAnywhere, Category="Camera")
+    UPROPERTY(VisibleAnywhere, Category = "Camera")
     UCameraManagerComponent* CameraManager;
 
-    UPROPERTY(VisibleAnywhere, Category="Movement")
+    //~ Components - Movement
+    UPROPERTY(VisibleAnywhere, Category = "Movement")
     UGlissandoComponent* Glissando;
 
-    UPROPERTY(VisibleAnywhere, Category="Movement")
+    UPROPERTY(VisibleAnywhere, Category = "Movement")
     UDashComponent* Dash;
 
-    //= Movement Config
-    UPROPERTY(EditDefaultsOnly, Category="Movement")
-    float DefaultMaxWalkSpeed = 800.f;
-
-    UPROPERTY(EditDefaultsOnly, Category="Movement")
-    float DefaultJumpZVelocity = 800.f;
-
-    UPROPERTY(EditDefaultsOnly, Category="Movement")
-    float DefaultGroundFriction = 8.f;
-
-    UPROPERTY(EditDefaultsOnly, Category="Movement")
-    float DefaultBrakingDeceleration = 2048.f;
-
-    UPROPERTY(EditDefaultsOnly, Category="Movement")
-    float DefaultAirControl = 0.8f;
-
-    UPROPERTY(EditDefaultsOnly, Category="Movement")
-    float DefaultFallingLateralFriction = 0.3f;
-
-    //= Camera Config
-    UPROPERTY(EditDefaultsOnly, Category="Camera")
-    float DefaultCameraHeight = 64.f;
-
-    UPROPERTY(EditDefaultsOnly, Category="Camera")
-    float DefaultFOV = 90.f;
-
-    //= Coyote Time
-    UPROPERTY(EditDefaultsOnly, Category="Movement")
-    float CoyoteTimeThreshold = 0.15f;
-
-    float CoyoteTimeCounter = 0.f;
-    bool  bWasGrounded      = false;
-    bool  bCoyoteJumpUsed   = false;
-
-    //= Input Buffer
-    UPROPERTY(EditDefaultsOnly, Category="Movement")
-    float JumpBufferDuration = 0.15f;
-
-    float JumpBufferCounter = 0.f;
-    bool  bJumpBuffered     = false;
-
-    //= WallJump
-    UPROPERTY(VisibleAnywhere, Category="Movement")
+    UPROPERTY(VisibleAnywhere, Category = "Movement")
     UWallJumpComponent* WallJump;
 
-    //= Slam
-    UPROPERTY(VisibleAnywhere, Category="Movement")
+    UPROPERTY(VisibleAnywhere, Category = "Movement")
     USlamComponent* Slam;
 
-    //= Weapon
-    UPROPERTY(VisibleAnywhere, Category="Weapon")
+    UPROPERTY(VisibleAnywhere, Category = "Movement")
+    UJumpComponent* JumpComp;
+
+    //~ Components - Weapon
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")
     UGunComponent* Gun;
 
-    //= ArmMesh
-    UPROPERTY(VisibleAnywhere, Category="Mesh")
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")
+    UFocusComponent* Focus;
+
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")
+    UWeaponSwapComponent* WeaponSwap;
+
+    //~ Components - Mesh
+    UPROPERTY(VisibleAnywhere, Category = "Mesh")
     USkeletalMeshComponent* ArmsMesh;
 
-    //= System
-    UPROPERTY(VisibleAnywhere, Category="System")
+    UPROPERTY(VisibleAnywhere, Category = "Mesh")
+    USkeletalMeshComponent* GunMesh;
+
+    UPROPERTY(VisibleAnywhere, Category = "Mesh")
+    USkeletalMeshComponent* SwordMesh;
+
+    //~ Components - System
+    UPROPERTY(VisibleAnywhere, Category = "System")
     UTimeScaleComponent* TimeScale;
 
-    //= Weapon
-    UPROPERTY(VisibleAnywhere, Category="Weapon")
-    UWeaponSwapComponent* WeaponSwap;
-    
+    //~ Movement config
+    UPROPERTY(EditDefaultsOnly, Category = "Movement")
+    float DefaultMaxWalkSpeed = 800.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Movement")
+    float DefaultJumpZVelocity = 800.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Movement")
+    float DefaultGroundFriction = 8.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Movement")
+    float DefaultBrakingDeceleration = 2048.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Movement")
+    float DefaultAirControl = 0.8f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Movement")
+    float DefaultFallingLateralFriction = 0.3f;
+
+    //~ Camera config
+    UPROPERTY(EditDefaultsOnly, Category = "Camera")
+    float DefaultCameraHeight = 64.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Camera")
+    float DefaultFOV = 90.f;
 };

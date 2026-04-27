@@ -6,8 +6,10 @@
 #include "Components/WallJumpComponent.h"
 #include "Components/SlamComponent.h"
 #include "Components/GunComponent.h"
+#include "Components/FocusComponent.h"
 #include "Components/TimeScaleComponent.h"
 #include "Components/WeaponSwapComponent.h"
+#include "Components/JumpComponent.h"
 #include "../Input/PlayerCharacterInputConfig.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
@@ -17,66 +19,80 @@
 APlayerCharacter::APlayerCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
-    
+
+    // Camera — GetMesh()에 attach. Transform은 BP에서 관리
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-    Camera->SetupAttachment(GetMesh(), NAME_None);
-    Camera->SetFieldOfView(DefaultFOV);
-    Camera->SetRelativeLocation(FVector(0.f, 0.f, DefaultCameraHeight));
+    Camera->SetupAttachment(GetMesh());
     Camera->bUsePawnControlRotation = true;
 
-    
-    
-    CameraManager   = CreateDefaultSubobject<UCameraManagerComponent>(TEXT("CameraManager"));
-    Glissando       = CreateDefaultSubobject<UGlissandoComponent>(TEXT("Glissando"));
-    Dash            = CreateDefaultSubobject<UDashComponent>(TEXT("Dash"));
-    WallJump        = CreateDefaultSubobject<UWallJumpComponent>(TEXT("WallJump"));
-    Slam            = CreateDefaultSubobject<USlamComponent>(TEXT("Slam"));
-    Gun             = CreateDefaultSubobject<UGunComponent>(TEXT("Gun"));
-
-    ArmsMesh        = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ArmsMesh"));
-    TimeScale       = CreateDefaultSubobject<UTimeScaleComponent>(TEXT("TimeScale"));
-    WeaponSwap      = CreateDefaultSubobject<UWeaponSwapComponent>(TEXT("WeaponSwap"));
-    
-    bUseControllerRotationYaw   = true;
-    bUseControllerRotationPitch = false;
-
-    GetCharacterMovement()->MaxWalkSpeed                = DefaultMaxWalkSpeed;
-    GetCharacterMovement()->JumpZVelocity               = DefaultJumpZVelocity;
-    GetCharacterMovement()->GroundFriction              = DefaultGroundFriction;
-    GetCharacterMovement()->BrakingDecelerationWalking  = DefaultBrakingDeceleration;
-    GetCharacterMovement()->AirControl                  = DefaultAirControl;
-    GetCharacterMovement()->AirControlBoostMultiplier   = 0.f;
-    GetCharacterMovement()->BrakingDecelerationFalling  = 0.f;
-    GetCharacterMovement()->FallingLateralFriction      = DefaultFallingLateralFriction;
-    
+    // ArmsMesh — Camera에 attach. Transform은 BP에서 관리
+    ArmsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ArmsMesh"));
     ArmsMesh->SetupAttachment(Camera);
     ArmsMesh->SetOnlyOwnerSee(true);
     ArmsMesh->bCastDynamicShadow = false;
 
+    // 무기 메쉬 — ArmsMesh에 attach. Transform은 BP에서 관리
+    GunMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponGunMesh"));
+    GunMesh->SetupAttachment(ArmsMesh);
+
+    SwordMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponSwordMesh"));
+    SwordMesh->SetupAttachment(ArmsMesh);
+
+    // Components
+    CameraManager = CreateDefaultSubobject<UCameraManagerComponent>(TEXT("CameraManager"));
+    Glissando     = CreateDefaultSubobject<UGlissandoComponent>(TEXT("Glissando"));
+    Dash          = CreateDefaultSubobject<UDashComponent>(TEXT("Dash"));
+    WallJump      = CreateDefaultSubobject<UWallJumpComponent>(TEXT("WallJump"));
+    Slam          = CreateDefaultSubobject<USlamComponent>(TEXT("Slam"));
+    JumpComp      = CreateDefaultSubobject<UJumpComponent>(TEXT("Jump"));
+    Gun           = CreateDefaultSubobject<UGunComponent>(TEXT("Gun"));
+    Focus         = CreateDefaultSubobject<UFocusComponent>(TEXT("Focus"));
+    TimeScale     = CreateDefaultSubobject<UTimeScaleComponent>(TEXT("TimeScale"));
+    WeaponSwap    = CreateDefaultSubobject<UWeaponSwapComponent>(TEXT("WeaponSwap"));
+
+    bUseControllerRotationYaw   = true;
+    bUseControllerRotationPitch = false;
+
+    SetupMovementDefaults();
+}
+
+void APlayerCharacter::SetupMovementDefaults()
+{
+    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+    MoveComp->MaxWalkSpeed                = DefaultMaxWalkSpeed;
+    MoveComp->JumpZVelocity               = DefaultJumpZVelocity;
+    MoveComp->GroundFriction              = DefaultGroundFriction;
+    MoveComp->BrakingDecelerationWalking  = DefaultBrakingDeceleration;
+    MoveComp->AirControl                  = DefaultAirControl;
+    MoveComp->AirControlBoostMultiplier   = 0.f;
+    MoveComp->BrakingDecelerationFalling  = 0.f;
+    MoveComp->FallingLateralFriction      = DefaultFallingLateralFriction;
 }
 
 void APlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
-    
-    CameraManager   ->Initialize(Camera);
-    Glissando       ->Initialize(this, Camera);
-    Dash            ->Initialize(this);
-    WallJump        ->Initialize(this);
-    Slam            ->Initialize(this);
-    Gun             ->Initialize(this, Camera);
-    ArmsMesh        ->SetupAttachment(Camera);
-    TimeScale       ->Initialize(this);
-    WeaponSwap      ->Initialize(this);
+    InitializeComponents();
     RegisterInputMappingContext();
+}
+
+void APlayerCharacter::InitializeComponents()
+{
+    CameraManager->Initialize(Camera);
+    Glissando->Initialize(this, Camera);
+    Dash->Initialize(this);
+    WallJump->Initialize(this);
+    Slam->Initialize(this);
+    JumpComp->Initialize(this, WallJump, Glissando);
+    Gun->Initialize(this, Camera);
+    Focus->Initialize(this, Camera, Gun);
+    TimeScale->Initialize(this);
+    WeaponSwap->Initialize(this, GunMesh, SwordMesh);
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    TickCoyoteTime(DeltaTime);
-    TickJumpBuffer(DeltaTime);
-
 }
 
 void APlayerCharacter::RegisterInputMappingContext()
@@ -110,30 +126,31 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
     UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
     if (!EIC) return;
 
-    EIC->BindAction(InputConfig->IA_Move,  ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Move);
-    EIC->BindAction(InputConfig->IA_Look,  ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Look);
-    EIC->BindAction(InputConfig->IA_Jump,  ETriggerEvent::Started,   this, &APlayerCharacter::Input_JumpStarted);
-    EIC->BindAction(InputConfig->IA_Jump,  ETriggerEvent::Completed, this, &APlayerCharacter::Input_JumpCompleted);
-    EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlideStarted);
-    EIC->BindAction(InputConfig->IA_Slide, ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
-    EIC->BindAction(InputConfig->IA_Dash,  ETriggerEvent::Started,   this, &APlayerCharacter::Input_DashStarted);
-    EIC->BindAction(InputConfig->IA_Slam, ETriggerEvent::Started, this, &APlayerCharacter::Input_SlamStarted);
-    EIC->BindAction(InputConfig->IA_Attack, ETriggerEvent::Triggered, this, &APlayerCharacter::Input_AttackStarted);
-    EIC->BindAction(InputConfig->IA_WeaponSkill, ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSkillStarted);
-    EIC->BindAction(InputConfig->IA_WeaponSkill, ETriggerEvent::Completed, this, &APlayerCharacter::Input_WeaponSkillCompleted);
-    EIC->BindAction(InputConfig->IA_WeaponSwapGun,    ETriggerEvent::Started,  this, &APlayerCharacter::Input_WeaponSwapGun);
-    EIC->BindAction(InputConfig->IA_WeaponSwapSword,  ETriggerEvent::Started,  this, &APlayerCharacter::Input_WeaponSwapSword);
+    EIC->BindAction(InputConfig->IA_Move,             ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Move);
+    EIC->BindAction(InputConfig->IA_Look,             ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Look);
+    EIC->BindAction(InputConfig->IA_Jump,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_JumpStarted);
+    EIC->BindAction(InputConfig->IA_Jump,             ETriggerEvent::Completed, this, &APlayerCharacter::Input_JumpCompleted);
+    EIC->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlideStarted);
+    EIC->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
+    EIC->BindAction(InputConfig->IA_Dash,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_DashStarted);
+    EIC->BindAction(InputConfig->IA_Slam,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlamStarted);
+    EIC->BindAction(InputConfig->IA_Attack,           ETriggerEvent::Triggered, this, &APlayerCharacter::Input_AttackStarted);
+    EIC->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSkillStarted);
+    EIC->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Completed, this, &APlayerCharacter::Input_WeaponSkillCompleted);
+    EIC->BindAction(InputConfig->IA_WeaponSwapGun,    ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSwapGun);
+    EIC->BindAction(InputConfig->IA_WeaponSwapSword,  ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSwapSword);
     EIC->BindAction(InputConfig->IA_WeaponSwapScroll, ETriggerEvent::Triggered, this, &APlayerCharacter::Input_WeaponSwapScroll);
-    
 }
+
+// ─── Input handlers ────────────────────────────────────────────────────────
 
 void APlayerCharacter::Input_Move(const FInputActionValue& Value)
 {
     const FVector2D Axis = Value.Get<FVector2D>();
     CurrentMoveInput = Axis;
+
     Glissando->OnMoveInput(Axis);
     Dash->SetMoveInput(Axis);
-    Glissando->OnMoveInput(Axis); // 추가
 
     if (Glissando->IsGlissando()) return;
 
@@ -147,45 +164,14 @@ void APlayerCharacter::Input_Move(const FInputActionValue& Value)
 
 void APlayerCharacter::Input_Look(const FInputActionValue& Value)
 {
-    const FVector2D Axis = Value.Get<FVector2D>();
-    float Sensitivity    = GetLookSensitivityMultiplier();
+    const FVector2D Axis        = Value.Get<FVector2D>();
+    const float     Sensitivity = GetLookSensitivityMultiplier();
     AddControllerYawInput(Axis.X * Sensitivity);
     AddControllerPitchInput(Axis.Y * Sensitivity);
 }
-void APlayerCharacter::Input_JumpStarted()
-{
-    if (Glissando->IsGlissando())
-    {
-        Glissando->EndGlissando();
-        Jump();
-        GetCharacterMovement()->GroundFriction             = DefaultGroundFriction;
-        GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
-    }
-    else if (GetCharacterMovement()->IsMovingOnGround())
-    {
-        Jump();
-    }
-    else if (WallJump->IsOnWall() && WallJump->TryWallJump())
-    {
-        // TryWallJump 안에서 처리
-    }
-    else if (CanCoyoteJump())
-    {
-        bCoyoteJumpUsed   = true;
-        CoyoteTimeCounter = 0.f;
-        Jump();
-    }
-    else
-    {
-        bJumpBuffered     = true;
-        JumpBufferCounter = JumpBufferDuration;
-    }
-}
 
-void APlayerCharacter::Input_JumpCompleted()
-{
-    StopJumping();
-}
+void APlayerCharacter::Input_JumpStarted()   { JumpComp->TryJump(); }
+void APlayerCharacter::Input_JumpCompleted() { StopJumping(); }
 
 void APlayerCharacter::Input_SlideStarted()
 {
@@ -193,10 +179,13 @@ void APlayerCharacter::Input_SlideStarted()
     if (Glissando->CanGlissando()) Glissando->StartGlissando();
 }
 
-void APlayerCharacter::Input_SlideCompleted()
-{
-    Glissando->EndGlissando();
-}
+void APlayerCharacter::Input_SlideCompleted()       { Glissando->EndGlissando(); }
+void APlayerCharacter::Input_SlamStarted()          { Slam->TrySlam(); }
+void APlayerCharacter::Input_AttackStarted()         { Gun->TryFire(); }
+void APlayerCharacter::Input_WeaponSkillStarted()    { Focus->StartFocus(); }
+void APlayerCharacter::Input_WeaponSkillCompleted()  { Focus->EndFocus(); }
+void APlayerCharacter::Input_WeaponSwapGun()         { WeaponSwap->SwapToGun(); }
+void APlayerCharacter::Input_WeaponSwapSword()       { WeaponSwap->SwapToSword(); }
 
 void APlayerCharacter::Input_DashStarted()
 {
@@ -205,101 +194,22 @@ void APlayerCharacter::Input_DashStarted()
     Dash->TryDash();
 }
 
+void APlayerCharacter::Input_WeaponSwapScroll(const FInputActionValue& Value)
+{
+    WeaponSwap->SwapScroll(Value.Get<float>());
+}
+
+// ─── Overrides ─────────────────────────────────────────────────────────────
+
 void APlayerCharacter::Landed(const FHitResult& Hit)
 {
     Super::Landed(Hit);
     WallJump->ResetWallJumps();
 }
 
-void APlayerCharacter::TickCoyoteTime(float DeltaTime)
-{
-    bool bIsGrounded = GetCharacterMovement()->IsMovingOnGround();
-    
-    if (bWasGrounded && !bIsGrounded)
-    {
-        CoyoteTimeCounter = CoyoteTimeThreshold;
-        bCoyoteJumpUsed   = false;
-    }
-
-    if (!bIsGrounded && CoyoteTimeCounter > 0.f)
-        CoyoteTimeCounter -= DeltaTime;
-    
-    if (bIsGrounded)
-    {
-        CoyoteTimeCounter = 0.f;
-        bCoyoteJumpUsed   = false;
-    }
-
-    bWasGrounded = bIsGrounded;
-}
-
-void APlayerCharacter::TickJumpBuffer(float DeltaTime)
-{
-    if (bJumpBuffered)
-    {
-        JumpBufferCounter -= DeltaTime;
-        
-        if (GetCharacterMovement()->IsMovingOnGround())
-        {
-            Jump();
-            bJumpBuffered     = false;
-            JumpBufferCounter = 0.f;
-        }
-        
-        if (JumpBufferCounter <= 0.f)
-        {
-            bJumpBuffered     = false;
-            JumpBufferCounter = 0.f;
-        }
-    }
-}
-
-bool APlayerCharacter::CanCoyoteJump() const
-{
-    return !GetCharacterMovement()->IsMovingOnGround()
-        && CoyoteTimeCounter > 0.f
-        && !bCoyoteJumpUsed;
-}
-
-void APlayerCharacter::Input_SlamStarted()
-{
-    Slam->TrySlam();
-}
-
-void APlayerCharacter::Input_AttackStarted()
-{
-    Gun->TryFire();
-}
-
-void APlayerCharacter::Input_WeaponSkillStarted()
-{
-    Gun->StartFocus();
-}
-
-void APlayerCharacter::Input_WeaponSkillCompleted()
-{
-    Gun->EndFocus();
-}
-
 float APlayerCharacter::GetLookSensitivityMultiplier() const
 {
-    if (Gun && Gun->IsFocusing())
-        return Gun->FocusSensitivity;
+    if (Focus && Focus->IsFocusing())
+        return Focus->GetFocusSensitivity();
     return 1.f;
-}
-
-void APlayerCharacter::Input_WeaponSwapGun()
-{
-    UE_LOG(LogTemp, Warning, TEXT("Input_WeaponSwapGun Called"));
-    WeaponSwap->SwapToGun();
-}
-
-void APlayerCharacter::Input_WeaponSwapSword()
-{
-    WeaponSwap->SwapToSword();
-}
-
-void APlayerCharacter::Input_WeaponSwapScroll(const FInputActionValue& Value)
-{
-    WeaponSwap->SwapScroll(Value.Get<float>());
 }

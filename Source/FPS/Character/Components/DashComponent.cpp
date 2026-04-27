@@ -1,7 +1,6 @@
 #include "DashComponent.h"
 #include "../PlayerCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/PlayerController.h"
 
 UDashComponent::UDashComponent()
 {
@@ -31,27 +30,21 @@ void UDashComponent::PerformDash()
     DashElapsed = 0.f;
     DashCharges--;
 
-    APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController());
-    if (PC)
+    const APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController());
+    if (!PC) return;
+
+    const FRotator          CamRot    = PC->GetControlRotation();
+    const FRotationMatrix   RotMatrix = FRotationMatrix(FRotator(0, CamRot.Yaw, 0));
+    const FVector           Forward   = RotMatrix.GetUnitAxis(EAxis::X);
+    const FVector           Right     = RotMatrix.GetUnitAxis(EAxis::Y);
+
+    if (!LastMoveInput.IsNearlyZero())
     {
-        FRotator CamRot = PC->GetControlRotation();
-        FRotationMatrix RotMatrix(FRotator(0, CamRot.Yaw, 0));
-
-        FVector Forward = RotMatrix.GetUnitAxis(EAxis::X);
-        FVector Right   = RotMatrix.GetUnitAxis(EAxis::Y);
-        
-
-        if (!LastMoveInput.IsNearlyZero())
-        {
-            DashDirection = Forward * LastMoveInput.Y + Right * LastMoveInput.X;
-            DashDirection.Z = 0.f;
-            DashDirection.Normalize();
-        }
-        else
-        {
-            DashDirection = FRotationMatrix(CamRot).GetUnitAxis(EAxis::X);
-            DashDirection.Normalize();
-        }
+        DashDirection   = (Forward * LastMoveInput.Y + Right * LastMoveInput.X).GetSafeNormal2D();
+    }
+    else
+    {
+        DashDirection   = FRotationMatrix(CamRot).GetUnitAxis(EAxis::X).GetSafeNormal2D();
     }
 
     OwnerCharacter->GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
@@ -59,32 +52,26 @@ void UDashComponent::PerformDash()
     DashDelayTimer   = 0.f;
 }
 
-void UDashComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                    FActorComponentTickFunction* ThisTickFunction)
-{
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-    TickDash(DeltaTime);
-    LastMoveInput = FVector2D::ZeroVector;
-}
-
 void UDashComponent::TickDash(float DeltaTime)
 {
-    if (bIsDashing)
+    if (!bIsDashing) return;
+
+    DashElapsed += DeltaTime;
+    OwnerCharacter->GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
+
+    if (DashElapsed >= DashDuration)
     {
-        DashElapsed += DeltaTime;
-        OwnerCharacter->GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
+        bIsDashing = false;
 
-        if (DashElapsed >= DashDuration)
-        {
-            bIsDashing = false;
-
-            if (OwnerCharacter->GetCharacterMovement()->IsMovingOnGround())
-                OwnerCharacter->GetCharacterMovement()->Velocity = FVector::ZeroVector;
-            else
-                OwnerCharacter->GetCharacterMovement()->Velocity = DashDirection * DashAirMomentumSpeed;
-        }
+        const bool bIsGrounded = OwnerCharacter->GetCharacterMovement()->IsMovingOnGround();
+        OwnerCharacter->GetCharacterMovement()->Velocity = bIsGrounded
+            ? FVector::ZeroVector
+            : DashDirection * DashAirMomentumSpeed;
     }
+}
 
+void UDashComponent::TickChargeRecovery(float DeltaTime)
+{
     if (bDashChargeDelay)
     {
         DashDelayTimer += DeltaTime;
@@ -117,4 +104,13 @@ void UDashComponent::AddDashChargeImmediate()
     AddDashCharge();
     bDashChargeDelay = false;
     DashChargeTimer  = 0.f;
+}
+
+void UDashComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+                                    FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    TickDash(DeltaTime);
+    TickChargeRecovery(DeltaTime);
+    LastMoveInput = FVector2D::ZeroVector;
 }

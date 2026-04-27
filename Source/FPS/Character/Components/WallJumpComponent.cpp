@@ -21,12 +21,11 @@ bool UWallJumpComponent::DetectWall(FHitResult& OutHit) const
 {
     if (!OwnerCharacter) return false;
 
-    // 캐릭터 주변 4방향으로 벽 감지
     const TArray<FVector> Directions = {
         OwnerCharacter->GetActorForwardVector(),
-        -OwnerCharacter->GetActorForwardVector(),
+       -OwnerCharacter->GetActorForwardVector(),
         OwnerCharacter->GetActorRightVector(),
-        -OwnerCharacter->GetActorRightVector()
+       -OwnerCharacter->GetActorRightVector()
     };
 
     FCollisionQueryParams Params;
@@ -34,13 +33,12 @@ bool UWallJumpComponent::DetectWall(FHitResult& OutHit) const
 
     for (const FVector& Dir : Directions)
     {
-        FVector Start = OwnerCharacter->GetActorLocation();
-        FVector End   = Start + Dir * WallDetectionRange;
+        const FVector Start = OwnerCharacter->GetActorLocation();
+        const FVector End   = Start + Dir * WallDetectionRange;
 
-        if (OwnerCharacter->GetWorld()->LineTraceSingleByChannel(
-            OutHit, Start, End, ECC_WorldStatic, Params))
+        if (OwnerCharacter->GetWorld()->LineTraceSingleByChannel(OutHit, Start, End, ECC_WorldStatic, Params))
         {
-            // 천장이나 바닥은 제외
+            // Ignore ceiling and floor surfaces
             if (FMath::Abs(OutHit.Normal.Z) < 0.3f)
                 return true;
         }
@@ -50,33 +48,31 @@ bool UWallJumpComponent::DetectWall(FHitResult& OutHit) const
 
 bool UWallJumpComponent::TryWallJump()
 {
-    if (!OwnerCharacter) return false;
-    if (WallJumpCount >= MaxWallJumps) return false;
-    if (OwnerCharacter->GetCharacterMovement()->IsMovingOnGround()) return false;
-    if (!bIsOnWall) return false;
+    if (!OwnerCharacter)                                              return false;
+    if (WallJumpCount >= MaxWallJumps)                               return false;
+    if (OwnerCharacter->GetCharacterMovement()->IsMovingOnGround())  return false;
+    if (!bIsOnWall)                                                  return false;
 
     WallJumpCount++;
 
-    // 벽 법선 방향으로 튕겨나감
     FVector JumpVelocity = WallNormal * WallJumpLateralForce;
     JumpVelocity.Z       = WallJumpZVelocity;
-    OwnerCharacter->GetCharacterMovement()->Velocity = JumpVelocity;
-
-    // 중력 원래대로 복구
+    OwnerCharacter->GetCharacterMovement()->Velocity     = JumpVelocity;
     OwnerCharacter->GetCharacterMovement()->GravityScale = 1.f;
-    bIsOnWall = false;
 
+    bIsOnWall = false;
     return true;
 }
 
-void UWallJumpComponent::ApplyWallGravity(float DeltaTime)
+void UWallJumpComponent::TickWallState(float DeltaTime)
 {
     if (!OwnerCharacter) return;
 
     FHitResult Hit;
-    bool bWallDetected = DetectWall(Hit);
+    const bool bWallDetected = DetectWall(Hit);
+    const bool bIsAirborne   = !OwnerCharacter->GetCharacterMovement()->IsMovingOnGround();
 
-    if (bWallDetected && !OwnerCharacter->GetCharacterMovement()->IsMovingOnGround())
+    if (bWallDetected && bIsAirborne)
     {
         bIsOnWall  = true;
         WallNormal = Hit.Normal;
@@ -84,10 +80,9 @@ void UWallJumpComponent::ApplyWallGravity(float DeltaTime)
     }
     else
     {
+        // Bug fix: original code set bIsOnWall = false then immediately checked !bIsOnWall (always true)
         bIsOnWall = false;
-        // 땅에 있거나 벽이 없으면 중력 복구
-        if (!bIsOnWall)
-            OwnerCharacter->GetCharacterMovement()->GravityScale = 1.f;
+        OwnerCharacter->GetCharacterMovement()->GravityScale = 1.f;
     }
 }
 
@@ -95,5 +90,5 @@ void UWallJumpComponent::TickComponent(float DeltaTime, ELevelTick TickType,
                                         FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-    ApplyWallGravity(DeltaTime);
+    TickWallState(DeltaTime);
 }
