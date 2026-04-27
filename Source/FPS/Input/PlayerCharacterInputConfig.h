@@ -41,4 +41,13 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	UInputAction* IA_WeaponSkill;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	UInputAction* IA_WeaponSwapGun;
+
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	UInputAction* IA_WeaponSwapSword;
+
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	UInputAction* IA_WeaponSwapScroll;
 };

@@ -13,6 +13,7 @@ class USlamComponent;
 class UGunComponent;
 class UTimeScaleComponent;
 struct FInputActionValue;
+class UWeaponSwapComponent;
 
 UCLASS()
 class FPS_API APlayerCharacter : public ACharacter
@@ -33,6 +34,16 @@ public:
     UFUNCTION(BlueprintPure) float GetLookSensitivityMultiplier() const;
 
 
+    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetGunMesh()   const { return GunMesh; }
+    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetSwordMesh() const { return SwordMesh; }
+
+
+    UPROPERTY(EditDefaultsOnly, Category="WeaponSwap")
+    USkeletalMeshComponent* GunMesh;
+
+    UPROPERTY(EditDefaultsOnly, Category="WeaponSwap")
+    USkeletalMeshComponent* SwordMesh;
+    
     FVector2D CurrentMoveInput = FVector2D::ZeroVector;
 protected:
     virtual void BeginPlay() override;
@@ -60,9 +71,14 @@ private:
     void TickJumpBuffer(float DeltaTime);
     bool CanCoyoteJump() const;
     
+    
 
     void BindInputActions(UInputComponent* PlayerInputComponent);
     void RegisterInputMappingContext();
+
+    void Input_WeaponSwapGun();
+    void Input_WeaponSwapSword();
+    void Input_WeaponSwapScroll(const FInputActionValue& Value);
 
     //= Components
     UPROPERTY(VisibleAnywhere, Category="Camera")
@@ -138,4 +154,8 @@ private:
     UPROPERTY(VisibleAnywhere, Category="System")
     UTimeScaleComponent* TimeScale;
 
+    //= Weapon
+    UPROPERTY(VisibleAnywhere, Category="Weapon")
+    UWeaponSwapComponent* WeaponSwap;
+    
 };

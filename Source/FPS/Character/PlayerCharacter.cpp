@@ -7,6 +7,7 @@
 #include "Components/SlamComponent.h"
 #include "Components/GunComponent.h"
 #include "Components/TimeScaleComponent.h"
+#include "Components/WeaponSwapComponent.h"
 #include "../Input/PlayerCharacterInputConfig.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
@@ -31,8 +32,10 @@ APlayerCharacter::APlayerCharacter()
     WallJump        = CreateDefaultSubobject<UWallJumpComponent>(TEXT("WallJump"));
     Slam            = CreateDefaultSubobject<USlamComponent>(TEXT("Slam"));
     Gun             = CreateDefaultSubobject<UGunComponent>(TEXT("Gun"));
+
     ArmsMesh        = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ArmsMesh"));
     TimeScale       = CreateDefaultSubobject<UTimeScaleComponent>(TEXT("TimeScale"));
+    WeaponSwap      = CreateDefaultSubobject<UWeaponSwapComponent>(TEXT("WeaponSwap"));
     
     bUseControllerRotationYaw   = true;
     bUseControllerRotationPitch = false;
@@ -49,6 +52,7 @@ APlayerCharacter::APlayerCharacter()
     ArmsMesh->SetupAttachment(Camera);
     ArmsMesh->SetOnlyOwnerSee(true);
     ArmsMesh->bCastDynamicShadow = false;
+
 }
 
 void APlayerCharacter::BeginPlay()
@@ -63,7 +67,7 @@ void APlayerCharacter::BeginPlay()
     Gun             ->Initialize(this, Camera);
     ArmsMesh        ->SetupAttachment(Camera);
     TimeScale       ->Initialize(this);
-    
+    WeaponSwap      ->Initialize(this);
     RegisterInputMappingContext();
 }
 
@@ -117,6 +121,9 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
     EIC->BindAction(InputConfig->IA_Attack, ETriggerEvent::Triggered, this, &APlayerCharacter::Input_AttackStarted);
     EIC->BindAction(InputConfig->IA_WeaponSkill, ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSkillStarted);
     EIC->BindAction(InputConfig->IA_WeaponSkill, ETriggerEvent::Completed, this, &APlayerCharacter::Input_WeaponSkillCompleted);
+    EIC->BindAction(InputConfig->IA_WeaponSwapGun,    ETriggerEvent::Started,  this, &APlayerCharacter::Input_WeaponSwapGun);
+    EIC->BindAction(InputConfig->IA_WeaponSwapSword,  ETriggerEvent::Started,  this, &APlayerCharacter::Input_WeaponSwapSword);
+    EIC->BindAction(InputConfig->IA_WeaponSwapScroll, ETriggerEvent::Triggered, this, &APlayerCharacter::Input_WeaponSwapScroll);
     
 }
 
@@ -279,4 +286,20 @@ float APlayerCharacter::GetLookSensitivityMultiplier() const
     if (Gun && Gun->IsFocusing())
         return Gun->FocusSensitivity;
     return 1.f;
+}
+
+void APlayerCharacter::Input_WeaponSwapGun()
+{
+    UE_LOG(LogTemp, Warning, TEXT("Input_WeaponSwapGun Called"));
+    WeaponSwap->SwapToGun();
+}
+
+void APlayerCharacter::Input_WeaponSwapSword()
+{
+    WeaponSwap->SwapToSword();
+}
+
+void APlayerCharacter::Input_WeaponSwapScroll(const FInputActionValue& Value)
+{
+    WeaponSwap->SwapScroll(Value.Get<float>());
 }
