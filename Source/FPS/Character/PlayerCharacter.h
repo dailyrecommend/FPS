@@ -11,6 +11,8 @@ class UPlayerCharacterInputConfig;
 class UWallJumpComponent;
 class USlamComponent;
 class UGunComponent;
+class USwordComponent;
+class UIajutsuComponent;
 class UFocusComponent;
 class UTimeScaleComponent;
 class UWeaponSwapComponent;
@@ -32,7 +34,7 @@ public:
     UFUNCTION(BlueprintPure) float GetDefaultFOV()                 const { return DefaultFOV; }
 
     //~ Getters - Components
-    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetArmsMesh()          const { return ArmsMesh; }
+    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetArmsMesh()           const { return ArmsMesh; }
     UFUNCTION(BlueprintPure) UTimeScaleComponent*    GetTimeScaleComponent() const { return TimeScale; }
     UFUNCTION(BlueprintPure) UFocusComponent*        GetFocusComponent()     const { return Focus; }
     UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetGunMesh()            const { return GunMesh; }
@@ -98,13 +100,21 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "Movement")
     UJumpComponent* JumpComp;
 
-    //~ Components - Weapon
-    UPROPERTY(VisibleAnywhere, Category = "Weapon")
+    //~ Components - Weapon (총)
+    UPROPERTY(VisibleAnywhere, Category = "Weapon|Gun")
     UGunComponent* Gun;
 
-    UPROPERTY(VisibleAnywhere, Category = "Weapon")
+    UPROPERTY(VisibleAnywhere, Category = "Weapon|Gun")
     UFocusComponent* Focus;
 
+    //~ Components - Weapon (검)
+    UPROPERTY(VisibleAnywhere, Category = "Weapon|Sword")
+    USwordComponent* Sword;
+
+    UPROPERTY(VisibleAnywhere, Category = "Weapon|Sword")
+    UIajutsuComponent* Iajutsu;
+
+    //~ Components - Weapon (공통)
     UPROPERTY(VisibleAnywhere, Category = "Weapon")
     UWeaponSwapComponent* WeaponSwap;
 

@@ -6,6 +6,8 @@
 #include "Components/WallJumpComponent.h"
 #include "Components/SlamComponent.h"
 #include "Components/GunComponent.h"
+#include "Components/SwordComponent.h"
+#include "Components/IajutsuComponent.h"
 #include "Components/FocusComponent.h"
 #include "Components/TimeScaleComponent.h"
 #include "Components/WeaponSwapComponent.h"
@@ -20,18 +22,18 @@ APlayerCharacter::APlayerCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
 
-    // Camera — GetMesh()에 attach. Transform은 BP에서 관리
+    // Camera — Transform은 BP에서 관리
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(GetMesh());
     Camera->bUsePawnControlRotation = true;
 
-    // ArmsMesh — Camera에 attach. Transform은 BP에서 관리
+    // ArmsMesh — Camera에 attach, Transform은 BP에서 관리
     ArmsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ArmsMesh"));
     ArmsMesh->SetupAttachment(Camera);
     ArmsMesh->SetOnlyOwnerSee(true);
     ArmsMesh->bCastDynamicShadow = false;
 
-    // 무기 메쉬 — ArmsMesh에 attach. Transform은 BP에서 관리
+    // 무기 메쉬 — ArmsMesh에 attach, Transform은 BP에서 관리
     GunMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponGunMesh"));
     GunMesh->SetupAttachment(ArmsMesh);
 
@@ -47,6 +49,8 @@ APlayerCharacter::APlayerCharacter()
     JumpComp      = CreateDefaultSubobject<UJumpComponent>(TEXT("Jump"));
     Gun           = CreateDefaultSubobject<UGunComponent>(TEXT("Gun"));
     Focus         = CreateDefaultSubobject<UFocusComponent>(TEXT("Focus"));
+    Sword         = CreateDefaultSubobject<USwordComponent>(TEXT("Sword"));
+    Iajutsu       = CreateDefaultSubobject<UIajutsuComponent>(TEXT("Iajutsu"));
     TimeScale     = CreateDefaultSubobject<UTimeScaleComponent>(TEXT("TimeScale"));
     WeaponSwap    = CreateDefaultSubobject<UWeaponSwapComponent>(TEXT("WeaponSwap"));
 
@@ -86,6 +90,8 @@ void APlayerCharacter::InitializeComponents()
     JumpComp->Initialize(this, WallJump, Glissando);
     Gun->Initialize(this, Camera);
     Focus->Initialize(this, Camera, Gun);
+    Sword->Initialize(this, Camera);
+    Iajutsu->Initialize(this, Camera, Sword);  // Sword보다 반드시 나중에
     TimeScale->Initialize(this);
     WeaponSwap->Initialize(this, GunMesh, SwordMesh);
 }
@@ -134,7 +140,7 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
     EIC->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
     EIC->BindAction(InputConfig->IA_Dash,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_DashStarted);
     EIC->BindAction(InputConfig->IA_Slam,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlamStarted);
-    EIC->BindAction(InputConfig->IA_Attack,           ETriggerEvent::Triggered, this, &APlayerCharacter::Input_AttackStarted);
+    EIC->BindAction(InputConfig->IA_Attack,           ETriggerEvent::Started,   this, &APlayerCharacter::Input_AttackStarted);
     EIC->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSkillStarted);
     EIC->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Completed, this, &APlayerCharacter::Input_WeaponSkillCompleted);
     EIC->BindAction(InputConfig->IA_WeaponSwapGun,    ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSwapGun);
@@ -179,13 +185,7 @@ void APlayerCharacter::Input_SlideStarted()
     if (Glissando->CanGlissando()) Glissando->StartGlissando();
 }
 
-void APlayerCharacter::Input_SlideCompleted()       { Glissando->EndGlissando(); }
-void APlayerCharacter::Input_SlamStarted()          { Slam->TrySlam(); }
-void APlayerCharacter::Input_AttackStarted()         { Gun->TryFire(); }
-void APlayerCharacter::Input_WeaponSkillStarted()    { Focus->StartFocus(); }
-void APlayerCharacter::Input_WeaponSkillCompleted()  { Focus->EndFocus(); }
-void APlayerCharacter::Input_WeaponSwapGun()         { WeaponSwap->SwapToGun(); }
-void APlayerCharacter::Input_WeaponSwapSword()       { WeaponSwap->SwapToSword(); }
+void APlayerCharacter::Input_SlideCompleted() { Glissando->EndGlissando(); }
 
 void APlayerCharacter::Input_DashStarted()
 {
@@ -193,6 +193,36 @@ void APlayerCharacter::Input_DashStarted()
     Dash->SetMoveInput(CurrentMoveInput);
     Dash->TryDash();
 }
+
+void APlayerCharacter::Input_SlamStarted() { Slam->TrySlam(); }
+
+void APlayerCharacter::Input_AttackStarted()
+{
+    switch (WeaponSwap->GetCurrentWeapon())
+    {
+        case EWeaponType::Gun:   Gun->TryFire();     break;
+        case EWeaponType::Sword: Sword->TryAttack(); break;
+    }
+}
+
+void APlayerCharacter::Input_WeaponSkillStarted()
+{
+    switch (WeaponSwap->GetCurrentWeapon())
+    {
+        case EWeaponType::Gun:   Focus->StartFocus();    break;
+        case EWeaponType::Sword: Iajutsu->StartIajutsu(); break;
+    }
+}
+
+void APlayerCharacter::Input_WeaponSkillCompleted()
+{
+    // 집중만 홀드 해제 시 종료, 발도술은 자동 종료
+    if (WeaponSwap->GetCurrentWeapon() == EWeaponType::Gun)
+        Focus->EndFocus();
+}
+
+void APlayerCharacter::Input_WeaponSwapGun()   { WeaponSwap->SwapToGun(); }
+void APlayerCharacter::Input_WeaponSwapSword() { WeaponSwap->SwapToSword(); }
 
 void APlayerCharacter::Input_WeaponSwapScroll(const FInputActionValue& Value)
 {
