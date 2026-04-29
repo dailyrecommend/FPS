@@ -140,7 +140,7 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
     EIC->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
     EIC->BindAction(InputConfig->IA_Dash,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_DashStarted);
     EIC->BindAction(InputConfig->IA_Slam,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlamStarted);
-    EIC->BindAction(InputConfig->IA_Attack,           ETriggerEvent::Started,   this, &APlayerCharacter::Input_AttackStarted);
+    EIC->BindAction(InputConfig->IA_Attack,           ETriggerEvent::Triggered,   this, &APlayerCharacter::Input_AttackStarted);
     EIC->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSkillStarted);
     EIC->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Completed, this, &APlayerCharacter::Input_WeaponSkillCompleted);
     EIC->BindAction(InputConfig->IA_WeaponSwapGun,    ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSwapGun);
@@ -200,8 +200,12 @@ void APlayerCharacter::Input_AttackStarted()
 {
     switch (WeaponSwap->GetCurrentWeapon())
     {
-        case EWeaponType::Gun:   Gun->TryFire();     break;
-        case EWeaponType::Sword: Sword->TryAttack(); break;
+        case EWeaponType::Gun:
+            if (!Focus->IsFocusing()) Gun->TryFire();
+            break;
+        case EWeaponType::Sword:
+            if (!Iajutsu->IsIajutsu()) Sword->TryAttack();
+            break;
     }
 }
 
@@ -209,23 +213,33 @@ void APlayerCharacter::Input_WeaponSkillStarted()
 {
     switch (WeaponSwap->GetCurrentWeapon())
     {
-        case EWeaponType::Gun:   Focus->StartFocus();    break;
+        case EWeaponType::Gun:   Focus->StartFocus();     break;
         case EWeaponType::Sword: Iajutsu->StartIajutsu(); break;
     }
 }
 
 void APlayerCharacter::Input_WeaponSkillCompleted()
 {
-    // 집중만 홀드 해제 시 종료, 발도술은 자동 종료
+    // Focus ends on release, Iajutsu ends automatically
     if (WeaponSwap->GetCurrentWeapon() == EWeaponType::Gun)
         Focus->EndFocus();
 }
 
-void APlayerCharacter::Input_WeaponSwapGun()   { WeaponSwap->SwapToGun(); }
-void APlayerCharacter::Input_WeaponSwapSword() { WeaponSwap->SwapToSword(); }
+void APlayerCharacter::Input_WeaponSwapGun()
+{
+    if (Focus->IsFocusing() || Iajutsu->IsIajutsu()) return;
+    WeaponSwap->SwapToGun();
+}
+
+void APlayerCharacter::Input_WeaponSwapSword()
+{
+    if (Focus->IsFocusing() || Iajutsu->IsIajutsu()) return;
+    WeaponSwap->SwapToSword();
+}
 
 void APlayerCharacter::Input_WeaponSwapScroll(const FInputActionValue& Value)
 {
+    if (Focus->IsFocusing() || Iajutsu->IsIajutsu()) return;
     WeaponSwap->SwapScroll(Value.Get<float>());
 }
 

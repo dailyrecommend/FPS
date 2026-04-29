@@ -1,18 +1,23 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Combat/WeaponHitResult.h"
 #include "SwordComponent.generated.h"
 
 class APlayerCharacter;
 class UCameraComponent;
 class UBoxComponent;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSwordAttack);
+UENUM(BlueprintType)
+enum class ESlashDirection : uint8
+{
+    RightToLeft,  // 우상단 -> 좌하단
+    LeftToRight,  // 좌상단 -> 우하단
+};
 
-/**
- * 검 기본 공격만 담당.
- * 발도술 스킬은 IajutsuComponent가 처리.
- */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlash, ESlashDirection, Direction);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSwordHit, const FWeaponHitResult&, HitResult);
+
 UCLASS(ClassGroup = Custom, meta = (BlueprintSpawnableComponent))
 class FPS_API USwordComponent : public UActorComponent
 {
@@ -25,16 +30,14 @@ public:
 
     void TryAttack();
 
-    UPROPERTY(BlueprintAssignable)
-    FOnSwordAttack OnSwordAttack;
+    // Broadcasts slash direction for animation
+    UPROPERTY(BlueprintAssignable) FOnSlash   OnSlash;
+    UPROPERTY(BlueprintAssignable) FOnSwordHit OnHit;
 
-    UFUNCTION(BlueprintPure) bool CanAttack() const;
+    UFUNCTION(BlueprintPure) bool             CanAttack()        const;
+    UFUNCTION(BlueprintPure) ESlashDirection  GetLastDirection() const { return LastDirection; }
 
-    /**
-     * BP에서 배치할 히트박스.
-     * 크기와 위치는 BP Details 패널에서 조정.
-     * 코드에서는 공격 타이밍에만 Overlap을 켜고 끔.
-     */
+    // Size and offset managed in Blueprint
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sword|Hitbox")
     UBoxComponent* SlashHitbox;
 
@@ -47,6 +50,7 @@ private:
     void PerformAttack();
     void EnableHitbox();
     void DisableHitbox();
+    void BroadcastHit(AActor* HitActor, const FVector& Location, const FVector& Normal);
     void PlayMontage(UAnimMontage* Montage);
 
     UFUNCTION()
@@ -54,30 +58,17 @@ private:
                          UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
                          bool bFromSweep, const FHitResult& SweepResult);
 
-    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack")
-    float AttackDamage = 80.f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack")
-    float AttackCooldown = 0.4f;
-
-    /** 히트박스가 활성화되는 시간 (스윙 구간) */
-    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack")
-    float HitboxActiveDuration = 0.2f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack")
-    UAnimMontage* SlashMontage;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack")
-    UAnimMontage* StabMontage;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Sword|Hitbox")
-    FName HitboxSocketName = TEXT("Socket_Sword");
+    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack") float         AttackDamage         = 80.f;
+    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack") float         AttackCooldown       = 0.4f;
+    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack") float         HitboxActiveDuration = 0.2f;
+    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack") UAnimMontage* SlashRightToLeftMontage;
+    UPROPERTY(EditDefaultsOnly, Category = "Sword|Attack") UAnimMontage* SlashLeftToRightMontage;
 
     UPROPERTY() APlayerCharacter* OwnerCharacter = nullptr;
     UPROPERTY() UCameraComponent* Camera         = nullptr;
 
-    float LastAttackTime    = 0.f;
-    float HitboxActiveTimer = 0.f;
-    bool  bHitboxActive     = false;
-    bool  bSlashTurn        = true;   // true = 베기, false = 찌르기 교대
+    float          LastAttackTime    = 0.f;
+    float          HitboxActiveTimer = 0.f;
+    bool           bHitboxActive     = false;
+    ESlashDirection LastDirection    = ESlashDirection::RightToLeft;
 };

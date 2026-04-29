@@ -2,13 +2,12 @@
 #include "../PlayerCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
-#include "Kismet/GameplayStatics.h"
+#include "Combat/DamageableInterface.h"
 
 USwordComponent::USwordComponent()
 {
     PrimaryComponentTick.bCanEverTick = true;
 
-    // 히트박스 생성 — 크기/위치는 BP에서 관리
     SlashHitbox = CreateDefaultSubobject<UBoxComponent>(TEXT("SlashHitbox"));
     SlashHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     SlashHitbox->SetCollisionObjectType(ECC_WorldDynamic);
@@ -28,12 +27,12 @@ void USwordComponent::Initialize(APlayerCharacter* InOwner, UCameraComponent* In
     OwnerCharacter = InOwner;
     Camera         = InCamera;
 
-    if (OwnerCharacter && OwnerCharacter->GetArmsMesh())
+    // Attach to camera so hitbox always stays in front of player view
+    if (Camera)
     {
         SlashHitbox->AttachToComponent(
-            OwnerCharacter->GetArmsMesh(),
-            FAttachmentTransformRules::KeepRelativeTransform,
-            HitboxSocketName
+            Camera,
+            FAttachmentTransformRules::KeepRelativeTransform
         );
     }
 }
@@ -54,11 +53,17 @@ void USwordComponent::PerformAttack()
 {
     LastAttackTime = OwnerCharacter->GetWorld()->GetTimeSeconds();
 
-    PlayMontage(bSlashTurn ? SlashMontage : StabMontage);
-    bSlashTurn = !bSlashTurn;
+    // Alternate slash direction
+    LastDirection = (LastDirection == ESlashDirection::RightToLeft)
+        ? ESlashDirection::LeftToRight
+        : ESlashDirection::RightToLeft;
+
+    PlayMontage(LastDirection == ESlashDirection::RightToLeft
+        ? SlashRightToLeftMontage
+        : SlashLeftToRightMontage);
 
     EnableHitbox();
-    OnSwordAttack.Broadcast();
+    OnSlash.Broadcast(LastDirection);
 }
 
 void USwordComponent::EnableHitbox()
@@ -79,14 +84,25 @@ void USwordComponent::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActo
                                        bool bFromSweep, const FHitResult& SweepResult)
 {
     if (!OtherActor || OtherActor == OwnerCharacter) return;
+    BroadcastHit(OtherActor, SweepResult.ImpactPoint, SweepResult.ImpactNormal);
+}
 
-    UGameplayStatics::ApplyDamage(
-        OtherActor,
-        AttackDamage,
-        OwnerCharacter->GetController(),
-        OwnerCharacter,
-        UDamageType::StaticClass()
-    );
+void USwordComponent::BroadcastHit(AActor* HitActor, const FVector& Location, const FVector& Normal)
+{
+    FWeaponHitResult WeaponHit;
+    WeaponHit.HitActor    = HitActor;
+    WeaponHit.HitLocation = Location;
+    WeaponHit.HitNormal   = Normal;
+    WeaponHit.Damage      = AttackDamage;
+    WeaponHit.DamageType  = EWeaponDamageType::Sword;
+    WeaponHit.HitType     = EHitType::Normal;
+    WeaponHit.bIsCritical = false;
+    WeaponHit.Instigator  = OwnerCharacter->GetController();
+
+    OnHit.Broadcast(WeaponHit);
+
+    if (HitActor->Implements<UDamageable>())
+        IDamageable::Execute_OnWeaponHit(HitActor, WeaponHit);
 }
 
 void USwordComponent::PlayMontage(UAnimMontage* Montage)
@@ -103,8 +119,6 @@ void USwordComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
     if (!bHitboxActive) return;
-
     HitboxActiveTimer -= DeltaTime;
-    if (HitboxActiveTimer <= 0.f)
-        DisableHitbox();
+    if (HitboxActiveTimer <= 0.f) DisableHitbox();
 }

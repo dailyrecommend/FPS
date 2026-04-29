@@ -1,17 +1,15 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Combat/WeaponHitResult.h"
 #include "GunComponent.generated.h"
 
 class APlayerCharacter;
 class UCameraComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGunFired);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGunHit, const FWeaponHitResult&, HitResult);
 
-/**
- * Handles hitscan firing, fire rate, and animation notification.
- * Focus / aim-down-sights logic lives in FocusComponent.
- */
 UCLASS(ClassGroup = Custom, meta = (BlueprintSpawnableComponent))
 class FPS_API UGunComponent : public UActorComponent
 {
@@ -22,19 +20,13 @@ public:
 
 	void Initialize(APlayerCharacter* InOwner, UCameraComponent* InCamera);
 
-	/** Attempts a standard fire. Respects fire rate cooldown. */
 	void TryFire();
 
-	/**
-	 * Fires a charged hitscan shot with elevated damage.
-	 * Called by FocusComponent on focus release.
-	 * @param Damage        Damage to deal on hit.
-	 * @param FireLockout   How long standard fire is blocked after this shot.
-	 */
+	// Called by FocusComponent on focus release
 	void PerformChargedShot(float Damage, float FireLockout);
 
-	UPROPERTY(BlueprintAssignable)
-	FOnGunFired OnGunFired;
+	UPROPERTY(BlueprintAssignable) FOnGunFired OnGunFired;
+	UPROPERTY(BlueprintAssignable) FOnGunHit   OnHit;
 
 	UFUNCTION(BlueprintPure) bool CanFire() const;
 
@@ -42,20 +34,13 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
-	void PerformHitscan(float Damage);
+	void PerformHitscan(float Damage, EHitType HitType);
 	void PlayFireMontage();
 
-	UPROPERTY(EditDefaultsOnly, Category = "Gun")
-	float FireRange    = 10000.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Gun")
-	float FireDamage   = 50.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Gun")
-	float FireCooldown = 0.5f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Gun")
-	UAnimMontage* FireMontage;
+	UPROPERTY(EditDefaultsOnly, Category = "Gun") float         FireRange    = 10000.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Gun") float         FireDamage   = 50.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Gun") float         FireCooldown = 0.5f;
+	UPROPERTY(EditDefaultsOnly, Category = "Gun") UAnimMontage* FireMontage;
 
 	UPROPERTY() APlayerCharacter* OwnerCharacter = nullptr;
 	UPROPERTY() UCameraComponent* Camera         = nullptr;

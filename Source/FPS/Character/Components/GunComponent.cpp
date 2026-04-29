@@ -1,7 +1,7 @@
 #include "GunComponent.h"
 #include "../PlayerCharacter.h"
 #include "Camera/CameraComponent.h"
-#include "Kismet/GameplayStatics.h"
+#include "Combat/DamageableInterface.h"
 
 UGunComponent::UGunComponent()
 {
@@ -28,22 +28,20 @@ bool UGunComponent::CanFire() const
 void UGunComponent::TryFire()
 {
     if (!CanFire()) return;
-
     LastFireTime = OwnerCharacter->GetWorld()->GetTimeSeconds();
-    PerformHitscan(FireDamage);
+    PerformHitscan(FireDamage, EHitType::Normal);
     PlayFireMontage();
     OnGunFired.Broadcast();
 }
 
 void UGunComponent::PerformChargedShot(float Damage, float FireLockout)
 {
-    // Push LastFireTime into the future to enforce the lockout window
     LastFireTime = OwnerCharacter->GetWorld()->GetTimeSeconds() + FireLockout;
-    PerformHitscan(Damage);
+    PerformHitscan(Damage, EHitType::Charged);
     OnGunFired.Broadcast();
 }
 
-void UGunComponent::PerformHitscan(float Damage)
+void UGunComponent::PerformHitscan(float Damage, EHitType HitType)
 {
     if (!Camera || !OwnerCharacter) return;
 
@@ -54,28 +52,31 @@ void UGunComponent::PerformHitscan(float Damage)
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(OwnerCharacter);
 
-    if (OwnerCharacter->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
-    {
-        if (Hit.GetActor())
-        {
-            UGameplayStatics::ApplyDamage(
-                Hit.GetActor(),
-                FireDamage,
-                OwnerCharacter->GetController(),
-                OwnerCharacter,
-                UDamageType::StaticClass()
-            );
-        }
-    }
+    if (!OwnerCharacter->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+        return;
+
+    if (!Hit.GetActor()) return;
+
+    FWeaponHitResult WeaponHit;
+    WeaponHit.HitActor    = Hit.GetActor();
+    WeaponHit.HitLocation = Hit.ImpactPoint;
+    WeaponHit.HitNormal   = Hit.ImpactNormal;
+    WeaponHit.Damage      = Damage;
+    WeaponHit.DamageType  = EWeaponDamageType::Gun;
+    WeaponHit.HitType     = HitType;
+    WeaponHit.bIsCritical = false;
+    WeaponHit.Instigator  = OwnerCharacter->GetController();
+
+    OnHit.Broadcast(WeaponHit);
+
+    if (Hit.GetActor()->Implements<UDamageable>())
+        IDamageable::Execute_OnWeaponHit(Hit.GetActor(), WeaponHit);
 }
 
 void UGunComponent::PlayFireMontage()
 {
     if (!FireMontage || !OwnerCharacter) return;
 
-    USkeletalMeshComponent* Arms = OwnerCharacter->GetArmsMesh();
-    if (!Arms) return;
-
-    UAnimInstance* Anim = Arms->GetAnimInstance();
+    UAnimInstance* Anim = OwnerCharacter->GetArmsMesh()->GetAnimInstance();
     if (Anim) Anim->Montage_Play(FireMontage, 1.f);
 }

@@ -4,7 +4,7 @@
 #include "SwordComponent.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Kismet/GameplayStatics.h"
+#include "Combat/DamageableInterface.h"
 
 UIajutsuComponent::UIajutsuComponent()
 {
@@ -17,7 +17,6 @@ void UIajutsuComponent::Initialize(APlayerCharacter* InOwner, UCameraComponent* 
     Camera         = InCamera;
     Sword          = InSword;
 
-    // SwordComponent의 SlashHitbox Overlap 이벤트를 발도술 전용 핸들러로 등록
     if (Sword && Sword->SlashHitbox)
     {
         Sword->SlashHitbox->OnComponentBeginOverlap.AddDynamic(
@@ -43,16 +42,13 @@ void UIajutsuComponent::PerformIajutsu()
     IajutsuElapsed = 0.f;
     HitActors.Empty();
 
-    // 카메라 전방으로 수평 돌진 방향 고정
     DashDirection = Camera
         ? Camera->GetForwardVector().GetSafeNormal2D()
         : OwnerCharacter->GetActorForwardVector();
 
-    // 중력 끄고 수평 돌진
     OwnerCharacter->GetCharacterMovement()->GravityScale = 0.f;
     OwnerCharacter->GetCharacterMovement()->Velocity     = DashDirection * IajutsuSpeed;
 
-    // SwordComponent 히트박스를 발도술 내내 활성화
     if (Sword) Sword->SlashHitbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
     PlayMontage(IajutsuMontage);
@@ -65,14 +61,45 @@ void UIajutsuComponent::EndIajutsu()
     CooldownRemaining = IajutsuCooldown;
     HitActors.Empty();
 
-    // 히트박스 비활성화
     if (Sword) Sword->SlashHitbox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    // 중력 복구, 수평 관성만 남김
     OwnerCharacter->GetCharacterMovement()->GravityScale = 1.f;
     OwnerCharacter->GetCharacterMovement()->Velocity     = DashDirection * IajutsuExitMomentum;
 
     OnIajutsuEnded.Broadcast();
+}
+
+void UIajutsuComponent::OnHitboxOverlapDuringIajutsu(UPrimitiveComponent* OverlappedComp,
+                                                      AActor* OtherActor,
+                                                      UPrimitiveComponent* OtherComp,
+                                                      int32 OtherBodyIndex,
+                                                      bool bFromSweep,
+                                                      const FHitResult& SweepResult)
+{
+    if (!bIsIajutsu) return;
+    if (!OtherActor || OtherActor == OwnerCharacter) return;
+    if (HitActors.Contains(OtherActor)) return;
+
+    HitActors.Add(OtherActor);
+    BroadcastHit(OtherActor, SweepResult.ImpactPoint, SweepResult.ImpactNormal);
+}
+
+void UIajutsuComponent::BroadcastHit(AActor* HitActor, const FVector& Location, const FVector& Normal)
+{
+    FWeaponHitResult WeaponHit;
+    WeaponHit.HitActor    = HitActor;
+    WeaponHit.HitLocation = Location;
+    WeaponHit.HitNormal   = Normal;
+    WeaponHit.Damage      = IajutsuDamage;
+    WeaponHit.DamageType  = EWeaponDamageType::Sword;
+    WeaponHit.HitType     = EHitType::Iajutsu;
+    WeaponHit.bIsCritical = false;
+    WeaponHit.Instigator  = OwnerCharacter->GetController();
+
+    OnHit.Broadcast(WeaponHit);
+
+    if (HitActor->Implements<UDamageable>())
+        IDamageable::Execute_OnWeaponHit(HitActor, WeaponHit);
 }
 
 void UIajutsuComponent::TickDash(float DeltaTime)
@@ -81,14 +108,12 @@ void UIajutsuComponent::TickDash(float DeltaTime)
 
     IajutsuElapsed += DeltaTime;
 
-    const float TraveledDistance = IajutsuElapsed * IajutsuSpeed;
-    if (TraveledDistance >= IajutsuDistance)
+    if (IajutsuElapsed * IajutsuSpeed >= IajutsuDistance)
     {
         EndIajutsu();
         return;
     }
 
-    // 속도 유지
     OwnerCharacter->GetCharacterMovement()->Velocity = DashDirection * IajutsuSpeed;
 }
 
@@ -104,29 +129,6 @@ void UIajutsuComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
     TickDash(DeltaTime);
     TickCooldown(DeltaTime);
-}
-
-void UIajutsuComponent::OnHitboxOverlapDuringIajutsu(UPrimitiveComponent* OverlappedComp,
-                                                      AActor* OtherActor,
-                                                      UPrimitiveComponent* OtherComp,
-                                                      int32 OtherBodyIndex,
-                                                      bool bFromSweep,
-                                                      const FHitResult& SweepResult)
-{
-    // 발도술 중이 아닐 때는 이 핸들러가 처리하지 않음 (SwordComponent가 처리)
-    if (!bIsIajutsu) return;
-    if (!OtherActor || OtherActor == OwnerCharacter) return;
-    if (HitActors.Contains(OtherActor)) return;
-
-    HitActors.Add(OtherActor);
-
-    UGameplayStatics::ApplyDamage(
-        OtherActor,
-        IajutsuDamage,
-        OwnerCharacter->GetController(),
-        OwnerCharacter,
-        UDamageType::StaticClass()
-    );
 }
 
 void UIajutsuComponent::PlayMontage(UAnimMontage* Montage)
