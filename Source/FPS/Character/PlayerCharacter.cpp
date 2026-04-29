@@ -240,7 +240,11 @@ void APlayerCharacter::Input_WeaponSwapSword()
 void APlayerCharacter::Input_WeaponSwapScroll(const FInputActionValue& Value)
 {
     if (Focus->IsFocusing() || Iajutsu->IsIajutsu()) return;
-    WeaponSwap->SwapScroll(Value.Get<float>());
+
+    if (WeaponSwap->GetCurrentWeapon() == EWeaponType::Gun)
+        WeaponSwap->SwapToSword();
+    else
+        WeaponSwap->SwapToGun();
 }
 
 // ─── Overrides ─────────────────────────────────────────────────────────────
