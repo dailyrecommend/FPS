@@ -4,9 +4,6 @@
 ADummyTarget::ADummyTarget()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
-	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-	SetRootComponent(Mesh);
 }
 
 void ADummyTarget::BeginPlay()

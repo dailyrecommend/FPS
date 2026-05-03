@@ -152,6 +152,8 @@ void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
 
 void APlayerCharacter::Input_Move(const FInputActionValue& Value)
 {
+    if (Iajutsu->IsHolding() || Iajutsu->IsStunned()) return;
+
     const FVector2D Axis = Value.Get<FVector2D>();
     CurrentMoveInput = Axis;
 
@@ -204,7 +206,7 @@ void APlayerCharacter::Input_AttackStarted()
             if (!Focus->IsFocusing()) Gun->TryFire();
             break;
         case EWeaponType::Sword:
-            if (!Iajutsu->IsIajutsu()) Sword->TryAttack();
+            if (!Iajutsu->IsHolding()) Sword->TryAttack();
             break;
     }
 }
@@ -214,32 +216,34 @@ void APlayerCharacter::Input_WeaponSkillStarted()
     switch (WeaponSwap->GetCurrentWeapon())
     {
         case EWeaponType::Gun:   Focus->StartFocus();     break;
-        case EWeaponType::Sword: Iajutsu->StartIajutsu(); break;
+        case EWeaponType::Sword: Iajutsu->StartHold();    break;
     }
 }
 
 void APlayerCharacter::Input_WeaponSkillCompleted()
 {
-    // Focus ends on release, Iajutsu ends automatically
-    if (WeaponSwap->GetCurrentWeapon() == EWeaponType::Gun)
-        Focus->EndFocus();
+    switch (WeaponSwap->GetCurrentWeapon())
+    {
+        case EWeaponType::Gun:   Focus->EndFocus();    break;
+        case EWeaponType::Sword: Iajutsu->EndHold();   break;
+    }
 }
 
 void APlayerCharacter::Input_WeaponSwapGun()
 {
-    if (Focus->IsFocusing() || Iajutsu->IsIajutsu()) return;
+    if (Focus->IsFocusing() || Iajutsu->IsHolding()) return;
     WeaponSwap->SwapToGun();
 }
 
 void APlayerCharacter::Input_WeaponSwapSword()
 {
-    if (Focus->IsFocusing() || Iajutsu->IsIajutsu()) return;
+    if (Focus->IsFocusing() || Iajutsu->IsHolding()) return;
     WeaponSwap->SwapToSword();
 }
 
 void APlayerCharacter::Input_WeaponSwapScroll(const FInputActionValue& Value)
 {
-    if (Focus->IsFocusing() || Iajutsu->IsIajutsu()) return;
+    if (Focus->IsFocusing() || Iajutsu->IsHolding()) return;
 
     if (WeaponSwap->GetCurrentWeapon() == EWeaponType::Gun)
         WeaponSwap->SwapToSword();
