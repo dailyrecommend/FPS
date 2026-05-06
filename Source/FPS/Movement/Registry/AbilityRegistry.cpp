@@ -26,20 +26,20 @@ TScriptInterface<IAbility> UAbilityRegistry::Find(FName AbilityId) const
     return nullptr;
 }
 
-bool UAbilityRegistry::IsAnyActive() const
+bool UAbilityRegistry::IsAnyAbilityActive() const
 {
     for (const TScriptInterface<IAbility>& Ability : Abilities)
     {
         UObject* Obj = Ability.GetObject();
-        if (Obj && IAbility::Execute_IsActive(Obj)) return true;
+        if (Obj && IAbility::Execute_IsAbilityActive(Obj)) return true;
     }
     return false;
 }
 
-bool UAbilityRegistry::IsActive(FName AbilityId) const
+bool UAbilityRegistry::IsAbilityActive(FName AbilityId) const
 {
     TScriptInterface<IAbility> Ability = Find(AbilityId);
-    return Ability.GetObject() && IAbility::Execute_IsActive(Ability.GetObject());
+    return Ability.GetObject() && IAbility::Execute_IsAbilityActive(Ability.GetObject());
 }
 
 EActivationResult UAbilityRegistry::TryActivate(FName AbilityId, const FAbilityContext& Context)
@@ -66,7 +66,7 @@ void UAbilityRegistry::CancelInterruptibleBy(FName InitiatorAbilityId)
     {
         UObject* Obj = Ability.GetObject();
         if (!Obj) continue;
-        if (!IAbility::Execute_IsActive(Obj)) continue;
+        if (!IAbility::Execute_IsAbilityActive(Obj)) continue;
         if (IAbility::Execute_CanBeInterruptedBy(Obj, InitiatorAbilityId))
             IAbility::Execute_RequestCancel(Obj);
     }

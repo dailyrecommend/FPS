@@ -26,7 +26,7 @@ public:
 
 	virtual EActivationResult TryActivate_Implementation(const FAbilityContext& Context) override;
 	virtual void  Deactivate_Implementation() override;
-	virtual bool  IsActive_Implementation() const override                { return bIsActive; }
+	virtual bool  IsAbilityActive_Implementation() const override         { return bIsActive; }
 	virtual FName GetAbilityId_Implementation() const override            { return AbilityId; }
 	virtual bool  CanBeInterruptedBy_Implementation(FName) const override { return false; }
 	virtual bool  RequestCancel_Implementation() override;

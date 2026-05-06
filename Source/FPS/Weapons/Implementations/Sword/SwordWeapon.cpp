@@ -2,8 +2,6 @@
 #include "Combat/Builders/HitResultBuilder.h"
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "Animation/AnimInstance.h"
 #include "GameFramework/Character.h"
 
 USwordWeapon::USwordWeapon()
@@ -21,19 +19,21 @@ USwordWeapon::USwordWeapon()
     SlashHitbox->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
 }
 
-void USwordWeapon::BeginPlay()
+void USwordWeapon::SetupHitbox()
 {
-    Super::BeginPlay();
+    if (bHitboxSetupDone) return;
+    if (!SlashHitbox)     return;
 
-    if (SlashHitbox)
-        SlashHitbox->OnComponentBeginOverlap.AddDynamic(this, &USwordWeapon::OnHitboxOverlap);
+    UCameraComponent* Cam = GetCameraSafe();
+    if (!Cam) return;
 
-    if (UCameraComponent* Cam = GetCameraSafe(); Cam && SlashHitbox)
-    {
-        SlashHitbox->AttachToComponent(
-            Cam,
-            FAttachmentTransformRules::KeepRelativeTransform);
-    }
+    SlashHitbox->OnComponentBeginOverlap.AddDynamic(this, &USwordWeapon::OnHitboxOverlap);
+
+    SlashHitbox->AttachToComponent(
+        Cam,
+        FAttachmentTransformRules::KeepRelativeTransform);
+
+    bHitboxSetupDone = true;
 }
 
 bool USwordWeapon::TryAttack_Implementation()
@@ -88,20 +88,6 @@ void USwordWeapon::OnHitboxOverlap(UPrimitiveComponent* /*OverlappedComp*/, AAct
 
     OnSwordHit.Broadcast(Builder.Build());
     Builder.Apply();
-}
-
-void USwordWeapon::PlayMontage(UAnimMontage* Montage)
-{
-    if (!Montage) return;
-
-    ACharacter* Owner = GetOwnerSafe();
-    if (!Owner) return;
-
-    USkeletalMeshComponent* Mesh = Owner->GetMesh();
-    if (!Mesh) return;
-
-    UAnimInstance* Anim = Mesh->GetAnimInstance();
-    if (Anim) Anim->Montage_Play(Montage, 1.f);
 }
 
 void USwordWeapon::TickComponent(float DeltaTime, ELevelTick TickType,

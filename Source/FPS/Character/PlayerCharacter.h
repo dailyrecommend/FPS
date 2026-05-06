@@ -4,20 +4,26 @@
 #include "PlayerCharacter.generated.h"
 
 class UCameraComponent;
-class UCameraManagerComponent;
-class UGlissandoComponent;
-class UDashComponent;
+class USkeletalMeshComponent;
+
 class UPlayerCharacterInputConfig;
-class UWallJumpComponent;
-class USlamComponent;
-class UGunComponent;
-class USwordComponent;
-class UIajutsuComponent;
-class UFocusComponent;
-class UTimeScaleComponent;
-class UWeaponSwapComponent;
-class UJumpComponent;
-struct FInputActionValue;
+class UPlayerInputRouter;
+
+class UAbilityRegistry;
+class UJumpAbility;
+class UDashAbility;
+class USlamAbility;
+class UWallJumpAbility;
+class UGlissandoAbility;
+
+class UWeaponRegistry;
+class UGunWeapon;
+class USwordWeapon;
+class UFocusSkill;
+class UIajutsuSkill;
+
+class UAnimationPlayerComponent;
+class UCameraEffectsComponent;
 
 UCLASS()
 class FPS_API APlayerCharacter : public ACharacter
@@ -27,134 +33,44 @@ class FPS_API APlayerCharacter : public ACharacter
 public:
     APlayerCharacter();
 
-    //~ Getters - Movement defaults
-    UFUNCTION(BlueprintPure) float GetDefaultCameraHeight()        const { return DefaultCameraHeight; }
-    UFUNCTION(BlueprintPure) float GetDefaultGroundFriction()      const { return DefaultGroundFriction; }
-    UFUNCTION(BlueprintPure) float GetDefaultBrakingDeceleration() const { return DefaultBrakingDeceleration; }
-    UFUNCTION(BlueprintPure) float GetDefaultFOV()                 const { return DefaultFOV; }
-
-    //~ Getters - Components
-    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetArmsMesh()           const { return ArmsMesh; }
-    UFUNCTION(BlueprintPure) UTimeScaleComponent*    GetTimeScaleComponent() const { return TimeScale; }
-    UFUNCTION(BlueprintPure) UFocusComponent*        GetFocusComponent()     const { return Focus; }
-    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetGunMesh()            const { return GunMesh; }
-    UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetSwordMesh()          const { return SwordMesh; }
-
-    //~ Look sensitivity (modulated by Focus state)
-    UFUNCTION(BlueprintPure) float GetLookSensitivityMultiplier() const;
-
-    //~ Current move input, read by movement components
-    FVector2D CurrentMoveInput = FVector2D::ZeroVector;
+    UFUNCTION(BlueprintPure, Category = "Camera") UCameraComponent* GetCamera() const { return Camera; }
 
 protected:
-    virtual void BeginPlay() override;
-    virtual void Tick(float DeltaTime) override;
+    virtual void PostInitializeComponents() override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-    virtual void Landed(const FHitResult& Hit) override;
 
     UPROPERTY(EditDefaultsOnly, Category = "Input")
-    UPlayerCharacterInputConfig* InputConfig;
+    TObjectPtr<UPlayerCharacterInputConfig> InputConfig;
 
 private:
-    //~ Input handlers
-    void Input_Move(const FInputActionValue& Value);
-    void Input_Look(const FInputActionValue& Value);
-    void Input_JumpStarted();
-    void Input_JumpCompleted();
-    void Input_SlideStarted();
-    void Input_SlideCompleted();
-    void Input_DashStarted();
-    void Input_SlamStarted();
-    void Input_AttackStarted();
-    void Input_WeaponSkillStarted();
-    void Input_WeaponSkillCompleted();
-    void Input_WeaponSwapGun();
-    void Input_WeaponSwapSword();
-    void Input_WeaponSwapScroll(const FInputActionValue& Value);
-
-    void BindInputActions(UInputComponent* PlayerInputComponent);
     void RegisterInputMappingContext();
-    void InitializeComponents();
-    void SetupMovementDefaults();
+    void WirePresentation();
+    void InjectAndRegisterAbilities();
+    void InjectAndRegisterWeapons();
 
-    //~ Components - Camera
-    UPROPERTY(VisibleAnywhere, Category = "Camera")
-    UCameraComponent* Camera;
+    //~ Visual root
+    UPROPERTY(VisibleAnywhere, Category = "Camera") TObjectPtr<UCameraComponent>       Camera;
+    UPROPERTY(VisibleAnywhere, Category = "Mesh")   TObjectPtr<USkeletalMeshComponent> ArmsMesh;
 
-    UPROPERTY(VisibleAnywhere, Category = "Camera")
-    UCameraManagerComponent* CameraManager;
+    //~ Input
+    UPROPERTY(VisibleAnywhere, Category = "Input")  TObjectPtr<UPlayerInputRouter>     InputRouter;
 
-    //~ Components - Movement
-    UPROPERTY(VisibleAnywhere, Category = "Movement")
-    UGlissandoComponent* Glissando;
+    //~ Movement domain
+    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UAbilityRegistry>     AbilityRegistry;
+    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UJumpAbility>         JumpAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UDashAbility>         DashAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<USlamAbility>         SlamAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UWallJumpAbility>     WallJumpAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UGlissandoAbility>    GlissandoAbility;
 
-    UPROPERTY(VisibleAnywhere, Category = "Movement")
-    UDashComponent* Dash;
+    //~ Weapons domain
+    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<UWeaponRegistry>        WeaponRegistry;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<UGunWeapon>             GunWeapon;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<USwordWeapon>           SwordWeapon;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<UFocusSkill>            FocusSkill;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<UIajutsuSkill>          IajutsuSkill;
 
-    UPROPERTY(VisibleAnywhere, Category = "Movement")
-    UWallJumpComponent* WallJump;
-
-    UPROPERTY(VisibleAnywhere, Category = "Movement")
-    USlamComponent* Slam;
-
-    UPROPERTY(VisibleAnywhere, Category = "Movement")
-    UJumpComponent* JumpComp;
-
-    //~ Components - Weapon (총)
-    UPROPERTY(VisibleAnywhere, Category = "Weapon|Gun")
-    UGunComponent* Gun;
-
-    UPROPERTY(VisibleAnywhere, Category = "Weapon|Gun")
-    UFocusComponent* Focus;
-
-    //~ Components - Weapon (검)
-    UPROPERTY(VisibleAnywhere, Category = "Weapon|Sword")
-    USwordComponent* Sword;
-
-    UPROPERTY(VisibleAnywhere, Category = "Weapon|Sword")
-    UIajutsuComponent* Iajutsu;
-
-    //~ Components - Weapon (공통)
-    UPROPERTY(VisibleAnywhere, Category = "Weapon")
-    UWeaponSwapComponent* WeaponSwap;
-
-    //~ Components - Mesh
-    UPROPERTY(VisibleAnywhere, Category = "Mesh")
-    USkeletalMeshComponent* ArmsMesh;
-
-    UPROPERTY(VisibleAnywhere, Category = "Mesh")
-    USkeletalMeshComponent* GunMesh;
-
-    UPROPERTY(VisibleAnywhere, Category = "Mesh")
-    USkeletalMeshComponent* SwordMesh;
-
-    //~ Components - System
-    UPROPERTY(VisibleAnywhere, Category = "System")
-    UTimeScaleComponent* TimeScale;
-
-    //~ Movement config
-    UPROPERTY(EditDefaultsOnly, Category = "Movement")
-    float DefaultMaxWalkSpeed = 800.f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Movement")
-    float DefaultJumpZVelocity = 800.f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Movement")
-    float DefaultGroundFriction = 8.f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Movement")
-    float DefaultBrakingDeceleration = 2048.f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Movement")
-    float DefaultAirControl = 0.8f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Movement")
-    float DefaultFallingLateralFriction = 0.3f;
-
-    //~ Camera config
-    UPROPERTY(EditDefaultsOnly, Category = "Camera")
-    float DefaultCameraHeight = 64.f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Camera")
-    float DefaultFOV = 90.f;
+    //~ Presentation
+    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UAnimationPlayerComponent> AnimationPlayer;
+    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UCameraEffectsComponent>   CameraEffects;
 };

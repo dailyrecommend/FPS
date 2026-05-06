@@ -23,7 +23,7 @@ public:
 	void Deactivate();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Movement|Ability")
-	bool IsActive() const;
+	bool IsAbilityActive() const;
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Movement|Ability")
 	FName GetAbilityId() const;

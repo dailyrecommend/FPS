@@ -9,6 +9,7 @@ enum class EHitType : uint8
 	Critical,
 	Headshot,
 	Charged,
+	Iajutsu,
 	Parried,
 	Blocked,
 };

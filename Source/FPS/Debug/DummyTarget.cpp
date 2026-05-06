@@ -1,5 +1,4 @@
-#include "DummyTarget.h"
-#include "Combat/WeaponHitResult.h"
+#include "Debug/DummyTarget.h"
 
 ADummyTarget::ADummyTarget()
 {
@@ -13,21 +12,21 @@ void ADummyTarget::BeginPlay()
 	OriginalScale = GetActorScale3D();
 }
 
-void ADummyTarget::OnWeaponHit_Implementation(const FWeaponHitResult& HitResult)
+void ADummyTarget::OnWeaponHit_Implementation(const FWeaponHitResult& Hit)
 {
-	OnHit(HitResult.Damage);
-}
+	CurrentHealth = FMath::Max(0.f, CurrentHealth - Hit.Damage);
 
-void ADummyTarget::OnHit(float Damage)
-{
-	CurrentHealth -= Damage;
-
-	SetActorScale3D(OriginalScale * ShrinkScale);
-	GetWorldTimerManager().ClearTimer(ScaleTimer);
-	GetWorldTimerManager().SetTimer(ScaleTimer, this, &ADummyTarget::RestoreScale, ShrinkDuration, false);
+	ApplyHitFeedback();
 
 	if (CurrentHealth <= 0.f)
 		CurrentHealth = MaxHealth;
+}
+
+void ADummyTarget::ApplyHitFeedback()
+{
+	SetActorScale3D(OriginalScale * ShrinkScale);
+	GetWorldTimerManager().ClearTimer(ScaleTimer);
+	GetWorldTimerManager().SetTimer(ScaleTimer, this, &ADummyTarget::RestoreScale, ShrinkDuration, false);
 }
 
 void ADummyTarget::RestoreScale()

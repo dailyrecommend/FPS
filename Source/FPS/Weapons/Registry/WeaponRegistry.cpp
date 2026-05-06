@@ -121,7 +121,7 @@ bool UWeaponRegistry::IsCurrentSkillActive() const
 
     TScriptInterface<IWeaponSkill> Skill = IWeapon::Execute_GetSkill(Obj);
     UObject* SkillObj = Skill.GetObject();
-    return SkillObj && IWeaponSkill::Execute_IsActive(SkillObj);
+    return SkillObj && IWeaponSkill::Execute_IsSkillActive(SkillObj);
 }
 
 int32 UWeaponRegistry::IndexForId(FName WeaponId) const

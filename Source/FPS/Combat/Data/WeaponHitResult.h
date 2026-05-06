@@ -1,7 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Combat/Enums/EHitType.h"
-#include "Combat/Enums/EWaeponDamageType.h"
+#include "Combat/Enums/EWeaponDamageType.h"
 #include "WeaponHitResult.generated.h"
 
 class AController;

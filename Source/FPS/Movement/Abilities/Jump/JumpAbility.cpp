@@ -37,7 +37,7 @@ bool UJumpAbility::TryGlissandoExitJump()
     ACharacter* Owner = GetOwnerSafe();
     if (!Registry || !Owner) return false;
 
-    if (!Registry->IsActive(GlissandoAbilityId)) return false;
+    if (!Registry->IsAbilityActive(GlissandoAbilityId)) return false;
 
     Registry->Cancel(GlissandoAbilityId);
     Owner->Jump();

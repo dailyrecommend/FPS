@@ -1,9 +1,8 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Movement/Base/AbilityBase.h"
+#include "Presentation/Interfaces/CameraEffects.h"
 #include "GlissandoAbility.generated.h"
-
-class UCameraComponent;
 
 UCLASS(ClassGroup = Custom, meta = (BlueprintSpawnableComponent))
 class FPS_API UGlissandoAbility : public UAbilityBase
@@ -13,8 +12,7 @@ class FPS_API UGlissandoAbility : public UAbilityBase
 public:
 	UGlissandoAbility();
 
-	/** Camera dependency injected separately because cameras are not part of ACharacter. */
-	void InjectCamera(UCameraComponent* InCamera);
+	void AttachCameraEffects(TScriptInterface<ICameraEffects> InEffects) { CameraEffects = InEffects; }
 
 protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
@@ -26,20 +24,23 @@ protected:
 
 private:
 	void TickGlissando(float DeltaTime, const FVector2D& MoveInput);
-	void ApplyCameraRoll(float Roll);
-	void ResetCameraRoll();
 
-	UPROPERTY(EditDefaultsOnly, Category = "Glissando") float BoostSpeed            = 1600.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Glissando") float LateralControl        = 16000.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Glissando") float CameraHeight          = -40.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Glissando") float CameraRoll            = 3.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Glissando") float MinSpeed              = 100.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Glissando") float CameraRollInterpSpeed = 8.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Glissando") float BoostSpeed     = 1600.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Glissando") float LateralControl = 16000.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Glissando") float MinSpeed       = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Glissando|Camera") float HeightOffset    = -40.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Glissando|Camera") float HeightInterp    = 8.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Glissando|Camera") float MaxRollDegrees  = 3.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Glissando|Camera") float RollInterpSpeed = 8.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Glissando|Camera") int32 CameraPriority  = 1;
 
 	UPROPERTY()
-	TWeakObjectPtr<UCameraComponent> Camera;
+	TScriptInterface<ICameraEffects> CameraEffects;
 
 	FVector   GlissandoDirection = FVector::ZeroVector;
-	float     CurrentCameraRoll  = 0.f;
 	FVector2D LastMoveInput      = FVector2D::ZeroVector;
+
+	int32 HeightHandle = 0;
+	int32 RollHandle   = 0;
 };

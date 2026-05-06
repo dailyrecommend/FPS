@@ -17,12 +17,7 @@ class FPS_API UGunWeapon : public UWeaponBase
 public:
 	UGunWeapon();
 
-	/**
-	 * Public entry point for charged-shot skills (Focus). The skill component calls this
-	 * after computing its own damage value and a fire lockout window.
-	 * Going through a documented method (instead of friending FocusComponent) keeps the
-	 * collaboration explicit and testable.
-	 */
+	/** Charged-shot entry point used by Focus skill. */
 	UFUNCTION(BlueprintCallable, Category = "Gun")
 	void FireChargedShot(float Damage, float FireLockoutSeconds);
 
@@ -33,9 +28,8 @@ public:
 
 protected:
 	void FireHitscan(float Damage, EHitType HitType);
-	void PlayFireMontage();
 
-	UPROPERTY(EditDefaultsOnly, Category = "Gun") float                  FireRange  = 10000.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Gun") float                  FireDamage = 50.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Gun") float                   FireRange  = 10000.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Gun") float                   FireDamage = 50.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Gun") TObjectPtr<UAnimMontage> FireMontage;
 };

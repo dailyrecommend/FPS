@@ -1,267 +1,177 @@
-#include "PlayerCharacter.h"
+#include "Character/PlayerCharacter.h"
+#include "Character/PlayerInputRouter.h"
+
+#include "Movement/Registry/AbilityRegistry.h"
+#include "Movement/Abilities/Jump/JumpAbility.h"
+#include "Movement/Abilities/Dash/DashAbility.h"
+#include "Movement/Abilities/Slam/SlamAbility.h"
+#include "Movement/Abilities/WallJump/WallJumpAbility.h"
+#include "Movement/Abilities/Glissando/GlissandoAbility.h"
+
+#include "Weapons/Registry/WeaponRegistry.h"
+#include "Weapons/Implementations/Gun/GunWeapon.h"
+#include "Weapons/Implementations/Sword/SwordWeapon.h"
+#include "Weapons/Implementations/Focus/FocusSkill.h"
+#include "Weapons/Implementations/Iajutsu/IajutsuSkill.h"
+
+#include "Presentation/Components/AnimationPlayerComponent.h"
+#include "Presentation/Components/CameraEffectsComponent.h"
+
+#include "Input/PlayerCharacterInputConfig.h"
 #include "Camera/CameraComponent.h"
-#include "Components/CameraManagerComponent.h"
-#include "Components/GlissandoComponent.h"
-#include "Components/DashComponent.h"
-#include "Components/WallJumpComponent.h"
-#include "Components/SlamComponent.h"
-#include "Components/GunComponent.h"
-#include "Components/SwordComponent.h"
-#include "Components/IajutsuComponent.h"
-#include "Components/FocusComponent.h"
-#include "Components/TimeScaleComponent.h"
-#include "Components/WeaponSwapComponent.h"
-#include "Components/JumpComponent.h"
-#include "../Input/PlayerCharacterInputConfig.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "EnhancedInputComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "InputActionValue.h"
+#include "GameFramework/PlayerController.h"
 
 APlayerCharacter::APlayerCharacter()
 {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
 
-    // Camera — Transform은 BP에서 관리
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-    Camera->SetupAttachment(GetMesh());
+    Camera->SetupAttachment(GetCapsuleComponent());
+    Camera->SetRelativeLocation(FVector(0.f, 0.f, BaseEyeHeight));
     Camera->bUsePawnControlRotation = true;
 
-    // ArmsMesh — Camera에 attach, Transform은 BP에서 관리
     ArmsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ArmsMesh"));
     ArmsMesh->SetupAttachment(Camera);
     ArmsMesh->SetOnlyOwnerSee(true);
     ArmsMesh->bCastDynamicShadow = false;
+    ArmsMesh->CastShadow         = false;
 
-    // 무기 메쉬 — ArmsMesh에 attach, Transform은 BP에서 관리
-    GunMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponGunMesh"));
-    GunMesh->SetupAttachment(ArmsMesh);
+    InputRouter = CreateDefaultSubobject<UPlayerInputRouter>(TEXT("InputRouter"));
 
-    SwordMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponSwordMesh"));
-    SwordMesh->SetupAttachment(ArmsMesh);
+    AbilityRegistry  = CreateDefaultSubobject<UAbilityRegistry>(TEXT("AbilityRegistry"));
+    JumpAbility      = CreateDefaultSubobject<UJumpAbility>     (TEXT("JumpAbility"));
+    DashAbility      = CreateDefaultSubobject<UDashAbility>     (TEXT("DashAbility"));
+    SlamAbility      = CreateDefaultSubobject<USlamAbility>     (TEXT("SlamAbility"));
+    WallJumpAbility  = CreateDefaultSubobject<UWallJumpAbility> (TEXT("WallJumpAbility"));
+    GlissandoAbility = CreateDefaultSubobject<UGlissandoAbility>(TEXT("GlissandoAbility"));
 
-    // Components
-    CameraManager = CreateDefaultSubobject<UCameraManagerComponent>(TEXT("CameraManager"));
-    Glissando     = CreateDefaultSubobject<UGlissandoComponent>(TEXT("Glissando"));
-    Dash          = CreateDefaultSubobject<UDashComponent>(TEXT("Dash"));
-    WallJump      = CreateDefaultSubobject<UWallJumpComponent>(TEXT("WallJump"));
-    Slam          = CreateDefaultSubobject<USlamComponent>(TEXT("Slam"));
-    JumpComp      = CreateDefaultSubobject<UJumpComponent>(TEXT("Jump"));
-    Gun           = CreateDefaultSubobject<UGunComponent>(TEXT("Gun"));
-    Focus         = CreateDefaultSubobject<UFocusComponent>(TEXT("Focus"));
-    Sword         = CreateDefaultSubobject<USwordComponent>(TEXT("Sword"));
-    Iajutsu       = CreateDefaultSubobject<UIajutsuComponent>(TEXT("Iajutsu"));
-    TimeScale     = CreateDefaultSubobject<UTimeScaleComponent>(TEXT("TimeScale"));
-    WeaponSwap    = CreateDefaultSubobject<UWeaponSwapComponent>(TEXT("WeaponSwap"));
+    WeaponRegistry = CreateDefaultSubobject<UWeaponRegistry>(TEXT("WeaponRegistry"));
+    GunWeapon      = CreateDefaultSubobject<UGunWeapon>     (TEXT("GunWeapon"));
+    SwordWeapon    = CreateDefaultSubobject<USwordWeapon>   (TEXT("SwordWeapon"));
+    FocusSkill     = CreateDefaultSubobject<UFocusSkill>    (TEXT("FocusSkill"));
+    IajutsuSkill   = CreateDefaultSubobject<UIajutsuSkill>  (TEXT("IajutsuSkill"));
 
-    bUseControllerRotationYaw   = true;
-    bUseControllerRotationPitch = false;
-
-    SetupMovementDefaults();
+    AnimationPlayer = CreateDefaultSubobject<UAnimationPlayerComponent>(TEXT("AnimationPlayer"));
+    CameraEffects   = CreateDefaultSubobject<UCameraEffectsComponent>  (TEXT("CameraEffects"));
 }
 
-void APlayerCharacter::SetupMovementDefaults()
+void APlayerCharacter::PostInitializeComponents()
 {
-    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    MoveComp->MaxWalkSpeed                = DefaultMaxWalkSpeed;
-    MoveComp->JumpZVelocity               = DefaultJumpZVelocity;
-    MoveComp->GroundFriction              = DefaultGroundFriction;
-    MoveComp->BrakingDecelerationWalking  = DefaultBrakingDeceleration;
-    MoveComp->AirControl                  = DefaultAirControl;
-    MoveComp->AirControlBoostMultiplier   = 0.f;
-    MoveComp->BrakingDecelerationFalling  = 0.f;
-    MoveComp->FallingLateralFriction      = DefaultFallingLateralFriction;
+    Super::PostInitializeComponents();
+
+    // All components have been constructed by now. Wire dependencies before any input
+    // or BeginPlay logic runs. This must NOT depend on a controller — possession may
+    // not have happened yet on the client.
+    WirePresentation();
+    InjectAndRegisterAbilities();
+    InjectAndRegisterWeapons();
+
+    if (InputRouter)
+    {
+        InputRouter->InjectDependencies(this, AbilityRegistry, WeaponRegistry);
+        InputRouter->SetInputConfig(InputConfig);
+    }
 }
 
-void APlayerCharacter::BeginPlay()
+void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-    Super::BeginPlay();
-    InitializeComponents();
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+    // SetupPlayerInputComponent runs after possession, so the controller is guaranteed
+    // valid here. This is the safe place to both register input mapping contexts and
+    // bind input actions.
     RegisterInputMappingContext();
-}
 
-void APlayerCharacter::InitializeComponents()
-{
-    CameraManager->Initialize(Camera);
-    Glissando->Initialize(this, Camera);
-    Dash->Initialize(this);
-    WallJump->Initialize(this);
-    Slam->Initialize(this);
-    JumpComp->Initialize(this, WallJump, Glissando);
-    Gun->Initialize(this, Camera);
-    Focus->Initialize(this, Camera, Gun);
-    Sword->Initialize(this, Camera);
-    Iajutsu->Initialize(this, Camera, Sword);  // Sword보다 반드시 나중에
-    TimeScale->Initialize(this);
-    WeaponSwap->Initialize(this, GunMesh, SwordMesh);
-}
-
-void APlayerCharacter::Tick(float DeltaTime)
-{
-    Super::Tick(DeltaTime);
+    if (InputRouter)
+        InputRouter->BindInputActions(PlayerInputComponent);
 }
 
 void APlayerCharacter::RegisterInputMappingContext()
 {
     if (!InputConfig) return;
 
-    const APlayerController* PC = Cast<APlayerController>(Controller);
+    APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC) return;
 
-    UEnhancedInputLocalPlayerSubsystem* Subsystem =
+    UEnhancedInputLocalPlayerSubsystem* InputSys =
         ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
-    if (!Subsystem) return;
+
+    if (!InputSys) return;
 
     if (InputConfig->IMC_KeyboardMouse)
-        Subsystem->AddMappingContext(InputConfig->IMC_KeyboardMouse, 0);
+        InputSys->AddMappingContext(InputConfig->IMC_KeyboardMouse, 0);
 
     if (InputConfig->IMC_Gamepad)
-        Subsystem->AddMappingContext(InputConfig->IMC_Gamepad, 1);
+        InputSys->AddMappingContext(InputConfig->IMC_Gamepad, 0);
 }
 
-void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void APlayerCharacter::WirePresentation()
 {
-    Super::SetupPlayerInputComponent(PlayerInputComponent);
-    BindInputActions(PlayerInputComponent);
+    if (AnimationPlayer && ArmsMesh)
+        AnimationPlayer->InjectMesh(ArmsMesh);
+
+    if (CameraEffects && Camera)
+        CameraEffects->InjectDependencies(Camera, BaseEyeHeight);
 }
 
-void APlayerCharacter::BindInputActions(UInputComponent* PlayerInputComponent)
+void APlayerCharacter::InjectAndRegisterAbilities()
 {
-    if (!InputConfig) return;
+    if (!AbilityRegistry) return;
 
-    UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-    if (!EIC) return;
-
-    EIC->BindAction(InputConfig->IA_Move,             ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Move);
-    EIC->BindAction(InputConfig->IA_Look,             ETriggerEvent::Triggered, this, &APlayerCharacter::Input_Look);
-    EIC->BindAction(InputConfig->IA_Jump,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_JumpStarted);
-    EIC->BindAction(InputConfig->IA_Jump,             ETriggerEvent::Completed, this, &APlayerCharacter::Input_JumpCompleted);
-    EIC->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlideStarted);
-    EIC->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Completed, this, &APlayerCharacter::Input_SlideCompleted);
-    EIC->BindAction(InputConfig->IA_Dash,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_DashStarted);
-    EIC->BindAction(InputConfig->IA_Slam,             ETriggerEvent::Started,   this, &APlayerCharacter::Input_SlamStarted);
-    EIC->BindAction(InputConfig->IA_Attack,           ETriggerEvent::Triggered,   this, &APlayerCharacter::Input_AttackStarted);
-    EIC->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSkillStarted);
-    EIC->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Completed, this, &APlayerCharacter::Input_WeaponSkillCompleted);
-    EIC->BindAction(InputConfig->IA_WeaponSwapGun,    ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSwapGun);
-    EIC->BindAction(InputConfig->IA_WeaponSwapSword,  ETriggerEvent::Started,   this, &APlayerCharacter::Input_WeaponSwapSword);
-    EIC->BindAction(InputConfig->IA_WeaponSwapScroll, ETriggerEvent::Triggered, this, &APlayerCharacter::Input_WeaponSwapScroll);
-}
-
-// ─── Input handlers ────────────────────────────────────────────────────────
-
-void APlayerCharacter::Input_Move(const FInputActionValue& Value)
-{
-    if (Iajutsu->IsHolding() || Iajutsu->IsStunned()) return;
-
-    const FVector2D Axis = Value.Get<FVector2D>();
-    CurrentMoveInput = Axis;
-
-    Glissando->OnMoveInput(Axis);
-    Dash->SetMoveInput(Axis);
-
-    if (Glissando->IsGlissando()) return;
-
-    if (Controller && !Axis.IsZero())
+    if (JumpAbility)      JumpAbility     ->InjectDependencies(this);
+    if (DashAbility)      DashAbility     ->InjectDependencies(this);
+    if (SlamAbility)      SlamAbility     ->InjectDependencies(this);
+    if (WallJumpAbility)  WallJumpAbility ->InjectDependencies(this);
+    if (GlissandoAbility)
     {
-        const FRotator YawRotation(0, Controller->GetControlRotation().Yaw, 0);
-        AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X), Axis.Y);
-        AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y), Axis.X);
+        GlissandoAbility->InjectDependencies(this);
+        GlissandoAbility->AttachCameraEffects(CameraEffects);
     }
+
+    AbilityRegistry->Register(JumpAbility);
+    AbilityRegistry->Register(DashAbility);
+    AbilityRegistry->Register(SlamAbility);
+    AbilityRegistry->Register(WallJumpAbility);
+    AbilityRegistry->Register(GlissandoAbility);
 }
 
-void APlayerCharacter::Input_Look(const FInputActionValue& Value)
+void APlayerCharacter::InjectAndRegisterWeapons()
 {
-    const FVector2D Axis        = Value.Get<FVector2D>();
-    const float     Sensitivity = GetLookSensitivityMultiplier();
-    AddControllerYawInput(Axis.X * Sensitivity);
-    AddControllerPitchInput(Axis.Y * Sensitivity);
-}
+    if (!WeaponRegistry) return;
 
-void APlayerCharacter::Input_JumpStarted()   { JumpComp->TryJump(); }
-void APlayerCharacter::Input_JumpCompleted() { StopJumping(); }
-
-void APlayerCharacter::Input_SlideStarted()
-{
-    Glissando->OnMoveInput(CurrentMoveInput);
-    if (Glissando->CanGlissando()) Glissando->StartGlissando();
-}
-
-void APlayerCharacter::Input_SlideCompleted() { Glissando->EndGlissando(); }
-
-void APlayerCharacter::Input_DashStarted()
-{
-    if (Slam->IsSlamming()) Slam->CancelSlam();
-    Dash->SetMoveInput(CurrentMoveInput);
-    Dash->TryDash();
-}
-
-void APlayerCharacter::Input_SlamStarted() { Slam->TrySlam(); }
-
-void APlayerCharacter::Input_AttackStarted()
-{
-    switch (WeaponSwap->GetCurrentWeapon())
+    if (GunWeapon)
     {
-        case EWeaponType::Gun:
-            if (!Focus->IsFocusing()) Gun->TryFire();
-            break;
-        case EWeaponType::Sword:
-            if (!Iajutsu->IsHolding()) Sword->TryAttack();
-            break;
+        GunWeapon->InjectDependencies(this, Camera);
+        GunWeapon->AttachAnimationPlayer(AnimationPlayer);
     }
-}
 
-void APlayerCharacter::Input_WeaponSkillStarted()
-{
-    switch (WeaponSwap->GetCurrentWeapon())
+    if (SwordWeapon)
     {
-        case EWeaponType::Gun:   Focus->StartFocus();     break;
-        case EWeaponType::Sword: Iajutsu->StartHold();    break;
+        SwordWeapon->InjectDependencies(this, Camera);
+        SwordWeapon->AttachAnimationPlayer(AnimationPlayer);
+        SwordWeapon->SetupHitbox();  // explicit ordering: depends on InjectDependencies
     }
-}
 
-void APlayerCharacter::Input_WeaponSkillCompleted()
-{
-    switch (WeaponSwap->GetCurrentWeapon())
+    if (FocusSkill && GunWeapon)
     {
-        case EWeaponType::Gun:   Focus->EndFocus();    break;
-        case EWeaponType::Sword: Iajutsu->EndHold();   break;
+        FocusSkill->InjectDependencies(this, Camera);
+        FocusSkill->AttachAnimationPlayer(AnimationPlayer);
+        FocusSkill->AttachCameraEffects(CameraEffects);
+        FocusSkill->AttachGun(GunWeapon);
+        GunWeapon->AttachSkill(FocusSkill);
     }
-}
 
-void APlayerCharacter::Input_WeaponSwapGun()
-{
-    if (Focus->IsFocusing() || Iajutsu->IsHolding()) return;
-    WeaponSwap->SwapToGun();
-}
+    if (IajutsuSkill && SwordWeapon)
+    {
+        IajutsuSkill->InjectDependencies(this, Camera);
+        IajutsuSkill->AttachAnimationPlayer(AnimationPlayer);
+        IajutsuSkill->AttachSword(SwordWeapon);
+        SwordWeapon->AttachSkill(IajutsuSkill);
+    }
 
-void APlayerCharacter::Input_WeaponSwapSword()
-{
-    if (Focus->IsFocusing() || Iajutsu->IsHolding()) return;
-    WeaponSwap->SwapToSword();
-}
-
-void APlayerCharacter::Input_WeaponSwapScroll(const FInputActionValue& Value)
-{
-    if (Focus->IsFocusing() || Iajutsu->IsHolding()) return;
-
-    if (WeaponSwap->GetCurrentWeapon() == EWeaponType::Gun)
-        WeaponSwap->SwapToSword();
-    else
-        WeaponSwap->SwapToGun();
-}
-
-// ─── Overrides ─────────────────────────────────────────────────────────────
-
-void APlayerCharacter::Landed(const FHitResult& Hit)
-{
-    Super::Landed(Hit);
-    WallJump->ResetWallJumps();
-}
-
-float APlayerCharacter::GetLookSensitivityMultiplier() const
-{
-    if (Focus && Focus->IsFocusing())
-        return Focus->GetFocusSensitivity();
-    return 1.f;
+    WeaponRegistry->Register(GunWeapon);
+    WeaponRegistry->Register(SwordWeapon);
 }

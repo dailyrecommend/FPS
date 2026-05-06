@@ -16,10 +16,10 @@ public:
 	TScriptInterface<IAbility> Find(FName AbilityId) const;
 
 	UFUNCTION(BlueprintPure)
-	bool IsAnyActive() const;
+	bool IsAnyAbilityActive() const;
 
 	UFUNCTION(BlueprintPure)
-	bool IsActive(FName AbilityId) const;
+	bool IsAbilityActive(FName AbilityId) const;
 
 	UFUNCTION(BlueprintCallable)
 	EActivationResult TryActivate(FName AbilityId, const FAbilityContext& Context);
