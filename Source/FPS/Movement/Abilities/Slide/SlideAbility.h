@@ -35,11 +35,14 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Slide|Camera") float RollInterpSpeed = 8.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Slide|Camera") int32 CameraPriority  = 1;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Slide|Anim")
+	TObjectPtr<UAnimMontage> SlideMontage;
+
 	UPROPERTY()
 	TScriptInterface<ICameraEffects> CameraEffects;
 
-	FVector   SlideDirection  = FVector::ZeroVector;
-	FVector2D LastMoveInput   = FVector2D::ZeroVector;
+	FVector   SlideDirection = FVector::ZeroVector;
+	FVector2D LastMoveInput  = FVector2D::ZeroVector;
 
 	int32 HeightHandle = 0;
 	int32 RollHandle   = 0;

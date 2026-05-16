@@ -34,6 +34,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Slam") float SlamLandingImpact       = 1000.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Slam") float SlamLandingStunDuration = 0.1f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Slam|Anim")
+	TObjectPtr<UAnimMontage> SlamMontage;
+
 	bool  bIsStunned = false;
 	float StunTimer  = 0.f;
 };

@@ -21,6 +21,8 @@ EActivationResult USlamAbility::OnTryActivate(const FAbilityContext& /*Context*/
     if (!MoveComp) return EActivationResult::Failed_NoOwner;
 
     MoveComp->Velocity = FVector(0.f, 0.f, -SlamDownForce);
+
+    PlayMontage(SlamMontage);
     return EActivationResult::Success;
 }
 

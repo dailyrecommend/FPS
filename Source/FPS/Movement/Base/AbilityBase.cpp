@@ -60,6 +60,22 @@ void UAbilityBase::StartCooldown()
         LastActivationTime = OwnerCharacter->GetWorld()->GetTimeSeconds();
 }
 
+void UAbilityBase::PlayMontage(UAnimMontage* Montage, float PlayRate)
+{
+    if (!Montage) return;
+    UObject* Player = AnimationPlayer.GetObject();
+    if (!Player) return;
+    IAnimationPlayer::Execute_PlayMontage(Player, Montage, PlayRate);
+}
+
+void UAbilityBase::StopMontage(UAnimMontage* Montage, float BlendOutTime)
+{
+    if (!Montage) return;
+    UObject* Player = AnimationPlayer.GetObject();
+    if (!Player) return;
+    IAnimationPlayer::Execute_StopMontage(Player, Montage, BlendOutTime);
+}
+
 UCharacterMovementComponent* UAbilityBase::GetMoveComp() const
 {
     ACharacter* Owner = OwnerCharacter.Get();

@@ -52,6 +52,7 @@ EActivationResult USlideAbility::OnTryActivate(const FAbilityContext& Context)
         RollHandle   = ICameraEffects::Execute_PushRollOffset  (Effects, 0.f,          RollInterpSpeed, CameraPriority);
     }
 
+    PlayMontage(SlideMontage);
     LastMoveInput = Context.MoveInput;
     return EActivationResult::Success;
 }
@@ -73,6 +74,8 @@ void USlideAbility::OnDeactivate()
     }
     HeightHandle = 0;
     RollHandle   = 0;
+
+    StopMontage(SlideMontage);
 }
 
 void USlideAbility::TickComponent(float DeltaTime, ELevelTick TickType,

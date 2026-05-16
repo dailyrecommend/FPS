@@ -2,58 +2,68 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Movement/Interfaces/Ability.h"
+#include "Presentation/Interfaces/AnimationPlayer.h"
 #include "AbilityBase.generated.h"
 
 class ACharacter;
 class UCharacterMovementComponent;
+class UAnimMontage;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAbilityStateChanged, bool, bIsActive);
 
 UCLASS(Abstract, ClassGroup = Custom)
 class FPS_API UAbilityBase
-	: public UActorComponent
-	, public IAbility
+    : public UActorComponent
+    , public IAbility
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	UAbilityBase();
+    UAbilityBase();
 
-	virtual void InjectDependencies(ACharacter* InOwner);
+    virtual void InjectDependencies(ACharacter* InOwner);
 
-	UPROPERTY(BlueprintAssignable, Category = "Movement|Ability")
-	FOnAbilityStateChanged OnAbilityStateChanged;
+    void AttachAnimationPlayer(TScriptInterface<IAnimationPlayer> InPlayer) { AnimationPlayer = InPlayer; }
 
-	virtual EActivationResult TryActivate_Implementation(const FAbilityContext& Context) override;
-	virtual void  Deactivate_Implementation() override;
-	virtual bool  IsAbilityActive_Implementation() const override         { return bIsActive; }
-	virtual FName GetAbilityId_Implementation() const override            { return AbilityId; }
-	virtual bool  CanBeInterruptedBy_Implementation(FName) const override { return false; }
-	virtual bool  RequestCancel_Implementation() override;
+    UPROPERTY(BlueprintAssignable, Category = "Movement|Ability")
+    FOnAbilityStateChanged OnAbilityStateChanged;
+
+    virtual EActivationResult TryActivate_Implementation(const FAbilityContext& Context) override;
+    virtual void  Deactivate_Implementation() override;
+    virtual bool  IsAbilityActive_Implementation() const override         { return bIsActive; }
+    virtual FName GetAbilityId_Implementation() const override            { return AbilityId; }
+    virtual bool  CanBeInterruptedBy_Implementation(FName) const override { return false; }
+    virtual bool  RequestCancel_Implementation() override;
 
 protected:
-	virtual EActivationResult OnTryActivate(const FAbilityContext& /*Context*/) { return EActivationResult::Success; }
-	virtual void              OnDeactivate() {}
-	virtual bool              CheckPreconditions(const FAbilityContext& /*Context*/) const { return true; }
+    virtual EActivationResult OnTryActivate(const FAbilityContext& /*Context*/) { return EActivationResult::Success; }
+    virtual void              OnDeactivate() {}
+    virtual bool              CheckPreconditions(const FAbilityContext& /*Context*/) const { return true; }
 
-	bool IsCooldownReady() const;
-	void StartCooldown();
+    bool IsCooldownReady() const;
+    void StartCooldown();
 
-	UCharacterMovementComponent* GetMoveComp() const;
-	ACharacter*                  GetOwnerSafe() const;
+    void PlayMontage(UAnimMontage* Montage, float PlayRate = 1.f);
+    void StopMontage(UAnimMontage* Montage, float BlendOutTime = 0.1f);
 
-	UPROPERTY(EditDefaultsOnly, Category = "Ability")
-	FName AbilityId = NAME_None;
+    UCharacterMovementComponent* GetMoveComp() const;
+    ACharacter*                  GetOwnerSafe() const;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Ability")
-	float Cooldown = 0.f;
+    UPROPERTY(EditDefaultsOnly, Category = "Ability")
+    FName AbilityId = NAME_None;
 
-	UPROPERTY()
-	TWeakObjectPtr<ACharacter> OwnerCharacter;
+    UPROPERTY(EditDefaultsOnly, Category = "Ability")
+    float Cooldown = 0.f;
 
-	bool bIsActive = false;
+    UPROPERTY()
+    TWeakObjectPtr<ACharacter> OwnerCharacter;
+
+    UPROPERTY()
+    TScriptInterface<IAnimationPlayer> AnimationPlayer;
+
+    bool bIsActive = false;
 
 private:
-	void  SetActiveInternal(bool bNewActive);
-	float LastActivationTime = -BIG_NUMBER;
+    void  SetActiveInternal(bool bNewActive);
+    float LastActivationTime = -BIG_NUMBER;
 };

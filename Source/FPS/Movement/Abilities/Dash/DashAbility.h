@@ -41,6 +41,9 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "Dash") float DashAirMomentumSpeed = 1200.f;
     UPROPERTY(EditDefaultsOnly, Category = "Dash") int32 MaxDashCharges       = 3;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Dash|Anim")
+    TObjectPtr<UAnimMontage> DashMontage;
+
     int32   DashCharges      = 3;
     float   DashElapsed      = 0.f;
     float   DashChargeTimer  = 0.f;

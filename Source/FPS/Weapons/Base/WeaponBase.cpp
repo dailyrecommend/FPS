@@ -14,8 +14,16 @@ void UWeaponBase::InjectDependencies(ACharacter* InOwner, UCameraComponent* InCa
 	Camera         = InCamera;
 }
 
-void UWeaponBase::OnEquipped_Implementation()   { bIsEquipped = true; }
-void UWeaponBase::OnUnequipped_Implementation() { bIsEquipped = false; }
+void UWeaponBase::OnEquipped_Implementation()
+{
+	bIsEquipped = true;
+	PlayMontage(DrawMontage);
+}
+
+void UWeaponBase::OnUnequipped_Implementation()
+{
+	bIsEquipped = false;
+}
 
 bool UWeaponBase::IsCooldownReady() const
 {

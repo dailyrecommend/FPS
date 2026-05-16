@@ -6,7 +6,8 @@
 class UAnimMontage;
 class UGunWeapon;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGunSkillStateChanged, bool, bIsActive);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGunSkillStateChanged, bool, bIsCharging);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGunSkillCharged, int32, RicochetCount);
 
 UCLASS(ClassGroup = Custom, meta = (BlueprintSpawnableComponent))
 class FPS_API UGunSkill : public UWeaponSkillBase
@@ -21,7 +22,13 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "GunSkill")
     FOnGunSkillStateChanged OnGunSkillStateChanged;
 
-    UFUNCTION(BlueprintPure, Category = "GunSkill") float GetSensitivity() const { return Sensitivity; }
+    UPROPERTY(BlueprintAssignable, Category = "GunSkill")
+    FOnGunSkillCharged OnGunSkillCharged;
+
+    UFUNCTION(BlueprintPure, Category = "GunSkill") int32 GetCurrentRicochetCount() const { return CurrentRicochetCount; }
+    UFUNCTION(BlueprintPure, Category = "GunSkill") int32 GetMaxRicochetCount()     const { return MaxRicochetCount; }
+    UFUNCTION(BlueprintPure, Category = "GunSkill") float GetChargeElapsed()        const { return ChargeElapsed; }
+    UFUNCTION(BlueprintPure, Category = "GunSkill") float GetChargeProgress()       const;
 
 protected:
     virtual void EndPlay(EEndPlayReason::Type Reason) override;
@@ -33,25 +40,16 @@ protected:
     virtual void OnCancel()    override;
 
 private:
-    void RequestTimeDilationDelayed();
-    void RequestTimeDilation();
-    void ReleaseTimeDilation();
-    void TickDuration(float UnscaledDelta);
+    int32 CalculateRicochetCount(float ElapsedSeconds) const;
+    void  TickCharge(float UnscaledDelta);
 
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float WorldDilation    = 0.15f;
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill") int32 DilationPriority = 5;
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float DilationBlendIn  = 0.1f;
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float DilationBlendOut = 0.2f;
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float StartDelay       = 0.05f;
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float MaxDuration      = 3.f;
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float CooldownDuration = 5.f;
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float ChargedDamage    = 500.f;
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float FireLockout      = 0.5f;
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float Sensitivity      = 0.4f;
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill") int32 MaxRicochetCount = 4;
 
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Camera") float FOVOffset      = -30.f;
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Camera") float FOVInterpSpeed = 8.f;
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Camera") int32 FOVPriority    = 5;
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill")
+    TArray<float> RicochetTimeThresholds = { 0.5f, 1.0f, 1.5f, 2.0f };
 
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Anim") TObjectPtr<UAnimMontage> ChargeMontage;
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Anim") TObjectPtr<UAnimMontage> FireMontage;
@@ -59,9 +57,7 @@ private:
     UPROPERTY()
     TWeakObjectPtr<UGunWeapon> Gun;
 
-    float Elapsed            = 0.f;
-    int32 TimeDilationHandle = 0;
-    int32 FOVHandle          = 0;
-
-    FTimerHandle StartDelayTimer;
+    float ChargeElapsed        = 0.f;
+    int32 CurrentRicochetCount = 0;
+    int32 LastBroadcastedCount = -1;
 };

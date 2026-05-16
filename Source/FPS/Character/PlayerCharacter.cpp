@@ -114,14 +114,31 @@ void APlayerCharacter::InjectAndRegisterAbilities()
 {
     if (!AbilityRegistry) return;
 
-    if (JumpAbility)     JumpAbility    ->InjectDependencies(this);
-    if (DashAbility)     DashAbility    ->InjectDependencies(this);
-    if (SlamAbility)     SlamAbility    ->InjectDependencies(this);
-    if (WallJumpAbility) WallJumpAbility->InjectDependencies(this);
+    if (JumpAbility)
+    {
+        JumpAbility->InjectDependencies(this);
+        JumpAbility->AttachAnimationPlayer(AnimationPlayer);
+    }
+    if (DashAbility)
+    {
+        DashAbility->InjectDependencies(this);
+        DashAbility->AttachAnimationPlayer(AnimationPlayer);
+    }
+    if (SlamAbility)
+    {
+        SlamAbility->InjectDependencies(this);
+        SlamAbility->AttachAnimationPlayer(AnimationPlayer);
+    }
+    if (WallJumpAbility)
+    {
+        WallJumpAbility->InjectDependencies(this);
+        WallJumpAbility->AttachAnimationPlayer(AnimationPlayer);
+    }
     if (SlideAbility)
     {
         SlideAbility->InjectDependencies(this);
         SlideAbility->AttachCameraEffects(CameraEffects);
+        SlideAbility->AttachAnimationPlayer(AnimationPlayer);
     }
 
     AbilityRegistry->Register(JumpAbility);

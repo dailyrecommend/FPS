@@ -24,10 +24,7 @@ public:
 
     virtual void InjectDependencies(ACharacter* InOwner, UCameraComponent* InCamera);
 
-    /** Optional skill attachment. Pass nullptr to detach. */
-    void AttachSkill(TScriptInterface<IWeaponSkill> InSkill) { Skill = InSkill; }
-
-    /** Optional animation player attachment. Without one, montage requests become no-ops. */
+    void AttachSkill(TScriptInterface<IWeaponSkill> InSkill)             { Skill           = InSkill; }
     void AttachAnimationPlayer(TScriptInterface<IAnimationPlayer> InPlayer) { AnimationPlayer = InPlayer; }
 
     UPROPERTY(BlueprintAssignable, Category = "Weapon")
@@ -45,7 +42,6 @@ protected:
     void StartCooldown();
     void StartCooldownUntil(float WorldTimeSeconds);
 
-    /** Convenience wrappers around the IAnimationPlayer interface. Safe to call when none is attached. */
     void PlayMontage(UAnimMontage* Montage, float PlayRate = 1.f);
     void StopMontage(UAnimMontage* Montage, float BlendOutTime = 0.1f);
 
@@ -57,6 +53,9 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, Category = "Weapon")
     float Cooldown = 0.5f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Weapon|Anim")
+    TObjectPtr<UAnimMontage> DrawMontage;
 
     UPROPERTY()
     TWeakObjectPtr<ACharacter> OwnerCharacter;

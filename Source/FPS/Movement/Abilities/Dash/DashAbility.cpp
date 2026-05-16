@@ -53,6 +53,7 @@ EActivationResult UDashAbility::OnTryActivate(const FAbilityContext& Context)
     DashDelayTimer   = 0.f;
     DashCharges      = FMath::Max(0, DashCharges - 1);
 
+    PlayMontage(DashMontage);
     return EActivationResult::Success;
 }
 
