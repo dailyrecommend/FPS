@@ -51,8 +51,7 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill")
     TArray<float> RicochetTimeThresholds = { 0.5f, 1.0f, 1.5f, 2.0f };
 
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Anim") TObjectPtr<UAnimMontage> ChargeMontage;
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Anim") TObjectPtr<UAnimMontage> FireMontage;
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Anim") TObjectPtr<UAnimMontage> GunSkillMontage;
 
     UPROPERTY()
     TWeakObjectPtr<UGunWeapon> Gun;
@@ -60,4 +59,17 @@ private:
     float ChargeElapsed        = 0.f;
     int32 CurrentRicochetCount = 0;
     int32 LastBroadcastedCount = -1;
+
+
+    //temp anim
+    void TickGunRotation(float DeltaTime);
+    void ResetGunRotation();
+
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Rotation")
+    float GunRotationSpeed = 360.f;  // 초당 720도 (2바퀴)
+
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Rotation")
+    FVector GunRotationAxis = FVector(0.f, 0.f, 1.f);  // Local X축 기준
+
+    float CurrentGunRoll = 0.f;
 };

@@ -48,6 +48,7 @@ protected:
     void StartCooldown(float Duration);
     void Cancel();
 
+    void PlayMontageSection(UAnimMontage* Montage, FName SectionName, float PlayRate = 1.f);
     void PlayMontage(UAnimMontage* Montage, float PlayRate = 1.f);
     void StopMontage(UAnimMontage* Montage, float BlendOutTime = 0.1f);
 

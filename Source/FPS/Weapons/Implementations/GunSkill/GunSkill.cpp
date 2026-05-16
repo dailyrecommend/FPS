@@ -1,4 +1,6 @@
 #include "Weapons/Implementations/GunSkill/GunSkill.h"
+
+#include "GameFramework/Character.h"
 #include "Weapons/Implementations/Gun/GunWeapon.h"
 #include "Misc/App.h"
 
@@ -11,18 +13,21 @@ bool UGunSkill::OnStartHold()
     ChargeElapsed        = 0.f;
     CurrentRicochetCount = 0;
     LastBroadcastedCount = -1;
+    CurrentGunRoll       = 0.f;  // 회전 초기화
 
-    PlayMontage(ChargeMontage);
+    PlayMontageSection(GunSkillMontage, TEXT("Charge"));
     OnGunSkillStateChanged.Broadcast(true);
     return true;
 }
+
 
 void UGunSkill::OnEndHold()
 {
     StartCooldown(CooldownDuration);
 
-    StopMontage(ChargeMontage);
-    PlayMontage(FireMontage);
+    ResetGunRotation();  // 회전 복구
+
+    PlayMontageSection(GunSkillMontage, TEXT("Fire"));
 
     if (UGunWeapon* G = Gun.Get())
         G->FireRicochetShot(ChargedDamage, CurrentRicochetCount, FireLockout);
@@ -36,7 +41,9 @@ void UGunSkill::OnEndHold()
 
 void UGunSkill::OnCancel()
 {
-    StopMontage(ChargeMontage);
+    ResetGunRotation();  // 회전 복구
+
+    StopMontage(GunSkillMontage);
 
     ChargeElapsed        = 0.f;
     CurrentRicochetCount = 0;
@@ -44,6 +51,45 @@ void UGunSkill::OnCancel()
 
     OnGunSkillStateChanged.Broadcast(false);
 }
+
+void UGunSkill::TickGunRotation(float DeltaTime)
+{
+    if (!bIsActive) return;
+
+    ACharacter* Owner = GetOwnerSafe();
+    if (!Owner) return;
+
+    USkeletalMeshComponent* ArmsMesh = Owner->FindComponentByClass<USkeletalMeshComponent>();
+    if (!ArmsMesh) return;
+
+    CurrentGunRoll += GunRotationSpeed * DeltaTime;
+
+    const FRotator CurrentRot = ArmsMesh->GetRelativeRotation();
+    ArmsMesh->SetRelativeRotation(FRotator(
+        CurrentRot.Pitch,
+        CurrentRot.Yaw,
+        CurrentGunRoll
+    ));
+}
+
+void UGunSkill::ResetGunRotation()
+{
+    ACharacter* Owner = GetOwnerSafe();
+    if (!Owner) return;
+
+    USkeletalMeshComponent* ArmsMesh = Owner->FindComponentByClass<USkeletalMeshComponent>();
+    if (!ArmsMesh) return;
+
+    const FRotator CurrentRot = ArmsMesh->GetRelativeRotation();
+    ArmsMesh->SetRelativeRotation(FRotator(
+        CurrentRot.Pitch,
+        CurrentRot.Yaw,
+        0.f
+    ));
+
+    CurrentGunRoll = 0.f;
+}
+
 
 void UGunSkill::EndPlay(EEndPlayReason::Type Reason)
 {
@@ -90,4 +136,5 @@ void UGunSkill::TickComponent(float DeltaTime, ELevelTick TickType,
     const float UnscaledDelta = FApp::GetDeltaTime();
     TickCharge(UnscaledDelta);
     TickCooldown(UnscaledDelta);
+    TickGunRotation(DeltaTime);  // 회전은 DeltaTime 사용
 }

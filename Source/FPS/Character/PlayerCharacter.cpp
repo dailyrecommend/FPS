@@ -21,12 +21,13 @@
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "EnhancedInputSubsystems.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "EnhancedInputSubsystems.h"
 
 APlayerCharacter::APlayerCharacter()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
 
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(GetCapsuleComponent());
@@ -71,6 +72,11 @@ void APlayerCharacter::PostInitializeComponents()
         InputRouter->InjectDependencies(this, AbilityRegistry, WeaponRegistry);
         InputRouter->SetInputConfig(InputConfig);
     }
+
+    if (WeaponRegistry)
+    {
+        WeaponRegistry->OnWeaponChanged.AddDynamic(this, &APlayerCharacter::OnWeaponChanged);
+    }
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -81,6 +87,37 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
     if (InputRouter)
         InputRouter->BindInputActions(PlayerInputComponent);
+}
+
+void APlayerCharacter::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+    TickLocomotion(DeltaTime);
+}
+
+void APlayerCharacter::TickLocomotion(float DeltaTime)
+{
+    if (!AnimationPlayer) return;
+
+    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+    if (!MoveComp) return;
+
+    const float Speed    = GetVelocity().Size2D();
+    const bool  bInAir   = MoveComp->IsFalling();
+    const int32 WeaponType = AnimationPlayer ? AnimationPlayer->GetCurrentWeaponType() : 0;
+
+    AnimationPlayer->SetLocomotionState(Speed, bInAir, WeaponType);
+}
+
+void APlayerCharacter::OnWeaponChanged(const FWeaponChangedEvent& Event)
+{
+    if (!AnimationPlayer) return;
+
+    int32 WeaponType = 0;
+    if (Event.NewWeaponId == TEXT("Gun"))   WeaponType = 0;
+    if (Event.NewWeaponId == TEXT("Sword")) WeaponType = 1;
+
+    AnimationPlayer->SetWeaponType(WeaponType);
 }
 
 void APlayerCharacter::RegisterInputMappingContext()

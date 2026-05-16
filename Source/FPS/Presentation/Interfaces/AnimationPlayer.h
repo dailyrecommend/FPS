@@ -11,13 +11,6 @@ class UAnimationPlayer : public UInterface
 	GENERATED_BODY()
 };
 
-/**
- * Animation playback abstraction. Weapons and abilities request animation playback
- * through this interface and never touch USkeletalMeshComponent or UAnimInstance directly.
- *
- * Allows replacing the playback strategy (FP arms, TP body, networked, ...) without
- * modifying any weapon or skill code.
- */
 class FPS_API IAnimationPlayer
 {
 	GENERATED_BODY()
@@ -25,6 +18,9 @@ class FPS_API IAnimationPlayer
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Presentation")
 	void PlayMontage(UAnimMontage* Montage, float PlayRate);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Presentation")
+	void PlayMontageSection(UAnimMontage* Montage, FName SectionName, float PlayRate);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Presentation")
 	void StopMontage(UAnimMontage* Montage, float BlendOutTime);

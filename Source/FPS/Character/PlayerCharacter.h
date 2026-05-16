@@ -1,6 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Weapons/Data/WeaponChangedEvent.h"
 #include "PlayerCharacter.generated.h"
 
 class UCameraComponent;
@@ -38,6 +39,7 @@ public:
 protected:
     virtual void PostInitializeComponents() override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+    virtual void Tick(float DeltaTime) override;
 
     UPROPERTY(EditDefaultsOnly, Category = "Input")
     TObjectPtr<UPlayerCharacterInputConfig> InputConfig;
@@ -47,6 +49,10 @@ private:
     void WirePresentation();
     void InjectAndRegisterAbilities();
     void InjectAndRegisterWeapons();
+    void TickLocomotion(float DeltaTime);
+
+    UFUNCTION()
+    void OnWeaponChanged(const FWeaponChangedEvent& Event);
 
     UPROPERTY(VisibleAnywhere, Category = "Camera")       TObjectPtr<UCameraComponent>             Camera;
     UPROPERTY(VisibleAnywhere, Category = "Mesh")         TObjectPtr<USkeletalMeshComponent>       ArmsMesh;

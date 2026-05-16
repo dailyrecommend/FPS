@@ -38,7 +38,7 @@ void UPlayerInputRouter::BindInputActions(UInputComponent* PlayerInputComponent)
     if (InputConfig->IA_Slam)             Input->BindAction(InputConfig->IA_Slam,             ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_SlamStarted);
     if (InputConfig->IA_Slide)            Input->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_SlideStarted);
     if (InputConfig->IA_Slide)            Input->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Completed, this, &UPlayerInputRouter::Input_SlideCompleted);
-    if (InputConfig->IA_Attack)           Input->BindAction(InputConfig->IA_Attack,           ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_AttackStarted);
+    if (InputConfig->IA_Attack)           Input->BindAction(InputConfig->IA_Attack,           ETriggerEvent::Triggered,   this, &UPlayerInputRouter::Input_AttackStarted);
     if (InputConfig->IA_WeaponSkill)      Input->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSkillStarted);
     if (InputConfig->IA_WeaponSkill)      Input->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Completed, this, &UPlayerInputRouter::Input_WeaponSkillCompleted);
     if (InputConfig->IA_WeaponSwapGun)    Input->BindAction(InputConfig->IA_WeaponSwapGun,    ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSwapGun);

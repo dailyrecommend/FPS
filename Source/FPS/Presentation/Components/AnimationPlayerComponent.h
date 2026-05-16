@@ -5,14 +5,8 @@
 #include "AnimationPlayerComponent.generated.h"
 
 class USkeletalMeshComponent;
+class UFPSAnimInstance;
 
-/**
- * Default IAnimationPlayer implementation that plays montages on a target mesh
- * (typically the FP arms mesh).
- *
- * The mesh is injected — the component never reaches into the owner to find it,
- * so the same component can be used with any mesh layout.
- */
 UCLASS(ClassGroup = Custom, meta = (BlueprintSpawnableComponent))
 class FPS_API UAnimationPlayerComponent
 	: public UActorComponent
@@ -24,10 +18,20 @@ public:
 	void InjectMesh(USkeletalMeshComponent* InMesh);
 
 	virtual void PlayMontage_Implementation(UAnimMontage* Montage, float PlayRate) override;
+	virtual void PlayMontageSection_Implementation(UAnimMontage* Montage, FName SectionName, float PlayRate) override;
 	virtual void StopMontage_Implementation(UAnimMontage* Montage, float BlendOutTime) override;
 	virtual bool IsMontagePlaying_Implementation(UAnimMontage* Montage) const override;
 
+	void SetLocomotionState(float Speed, bool bInAir, int32 WeaponType);
+	void SetWeaponType(int32 WeaponType);
+
+	int32 GetCurrentWeaponType() const { return CurrentWeaponType; }
+
 private:
+	UFPSAnimInstance* GetFPSAnimInstance() const;
+
 	UPROPERTY()
 	TWeakObjectPtr<USkeletalMeshComponent> Mesh;
+
+	int32 CurrentWeaponType = 0;
 };

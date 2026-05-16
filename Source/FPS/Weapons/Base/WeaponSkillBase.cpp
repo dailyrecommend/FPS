@@ -50,6 +50,14 @@ void UWeaponSkillBase::StartCooldown(float Duration)
     CooldownRemaining = FMath::Max(0.f, Duration);
 }
 
+void UWeaponSkillBase::PlayMontageSection(UAnimMontage* Montage, FName SectionName, float PlayRate)
+{
+    if (!Montage) return;
+    UObject* Player = AnimationPlayer.GetObject();
+    if (!Player) return;
+    IAnimationPlayer::Execute_PlayMontageSection(Player, Montage, SectionName, PlayRate);
+}
+
 void UWeaponSkillBase::PlayMontage(UAnimMontage* Montage, float PlayRate)
 {
     if (!Montage) return;
