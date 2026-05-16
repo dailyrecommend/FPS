@@ -14,7 +14,7 @@ public:
 	UJumpAbility();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Jump|Interactions")
-	FName GlissandoAbilityId = TEXT("Glissando");
+	FName SlideAbilityId = TEXT("Slide");
 
 	UPROPERTY(EditDefaultsOnly, Category = "Jump|Interactions")
 	FName WallJumpAbilityId = TEXT("WallJump");
@@ -28,7 +28,7 @@ protected:
 private:
 	UAbilityRegistry* GetRegistry() const;
 
-	bool TryGlissandoExitJump();
+	bool TrySlideExitJump();
 	bool TryGroundJump();
 	bool TryDelegateWallJump(const FAbilityContext& Context);
 	bool TryCoyoteJump();

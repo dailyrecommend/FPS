@@ -1,4 +1,4 @@
-#include "Weapons/Implementations/Focus/FocusSkill.h"
+#include "Weapons/Implementations/GunSkill/GunSkill.h"
 #include "Weapons/Implementations/Gun/GunWeapon.h"
 #include "Core/Subsystems/TimeDilationSubsystem.h"
 #include "Core/Data/TimeDilationRequest.h"
@@ -7,16 +7,15 @@
 #include "TimerManager.h"
 #include "Misc/App.h"
 
-UFocusSkill::UFocusSkill()
+UGunSkill::UGunSkill()
 {
 }
 
-bool UFocusSkill::OnStartHold()
+bool UGunSkill::OnStartHold()
 {
     Elapsed = 0.f;
 
-    PlayMontage(FocusMontage);
-
+    PlayMontage(ChargeMontage);
     FOVHandle = PushFOVOffset(FOVOffset, FOVInterpSpeed, FOVPriority);
 
     ACharacter* Owner = GetOwnerSafe();
@@ -24,16 +23,16 @@ bool UFocusSkill::OnStartHold()
     {
         Owner->GetWorld()->GetTimerManager().SetTimer(
             StartDelayTimer,
-            FTimerDelegate::CreateUObject(this, &UFocusSkill::RequestTimeDilationDelayed),
+            FTimerDelegate::CreateUObject(this, &UGunSkill::RequestTimeDilationDelayed),
             FMath::Max(StartDelay, 0.001f),
             false);
     }
 
-    OnFocusStateChanged.Broadcast(true);
+    OnGunSkillStateChanged.Broadcast(true);
     return true;
 }
 
-void UFocusSkill::OnEndHold()
+void UGunSkill::OnEndHold()
 {
     ACharacter* Owner = GetOwnerSafe();
     if (Owner && Owner->GetWorld())
@@ -42,19 +41,20 @@ void UFocusSkill::OnEndHold()
     StartCooldown(CooldownDuration);
 
     ReleaseTimeDilation();
+    ReleaseTimeDilation();
     PopFOVOffset(FOVHandle);
     FOVHandle = 0;
 
-    StopMontage(FocusMontage);
-    PlayMontage(FocusFireMontage);
+    StopMontage(ChargeMontage);
+    PlayMontage(FireMontage);
 
     if (UGunWeapon* G = Gun.Get())
         G->FireChargedShot(ChargedDamage, FireLockout);
 
-    OnFocusStateChanged.Broadcast(false);
+    OnGunSkillStateChanged.Broadcast(false);
 }
 
-void UFocusSkill::OnCancel()
+void UGunSkill::OnCancel()
 {
     ACharacter* Owner = GetOwnerSafe();
     if (Owner && Owner->GetWorld())
@@ -64,11 +64,11 @@ void UFocusSkill::OnCancel()
     PopFOVOffset(FOVHandle);
     FOVHandle = 0;
 
-    StopMontage(FocusMontage);
-    OnFocusStateChanged.Broadcast(false);
+    StopMontage(ChargeMontage);
+    OnGunSkillStateChanged.Broadcast(false);
 }
 
-void UFocusSkill::EndPlay(EEndPlayReason::Type Reason)
+void UGunSkill::EndPlay(EEndPlayReason::Type Reason)
 {
     ReleaseTimeDilation();
     PopFOVOffset(FOVHandle);
@@ -80,13 +80,13 @@ void UFocusSkill::EndPlay(EEndPlayReason::Type Reason)
     Super::EndPlay(Reason);
 }
 
-void UFocusSkill::RequestTimeDilationDelayed()
+void UGunSkill::RequestTimeDilationDelayed()
 {
     if (!bIsActive) return;
     RequestTimeDilation();
 }
 
-void UFocusSkill::RequestTimeDilation()
+void UGunSkill::RequestTimeDilation()
 {
     ACharacter* Owner = GetOwnerSafe();
     if (!Owner || !Owner->GetWorld()) return;
@@ -111,7 +111,7 @@ void UFocusSkill::RequestTimeDilation()
     TimeDilationHandle = TimeSys->PushRequest(Request);
 }
 
-void UFocusSkill::ReleaseTimeDilation()
+void UGunSkill::ReleaseTimeDilation()
 {
     if (TimeDilationHandle == 0) return;
 
@@ -124,7 +124,7 @@ void UFocusSkill::ReleaseTimeDilation()
     TimeDilationHandle = 0;
 }
 
-void UFocusSkill::TickDuration(float UnscaledDelta)
+void UGunSkill::TickDuration(float UnscaledDelta)
 {
     if (!bIsActive) return;
     Elapsed += UnscaledDelta;
@@ -132,8 +132,8 @@ void UFocusSkill::TickDuration(float UnscaledDelta)
         EndHold_Implementation();
 }
 
-void UFocusSkill::TickComponent(float DeltaTime, ELevelTick TickType,
-                                FActorComponentTickFunction* ThisTickFunction)
+void UGunSkill::TickComponent(float DeltaTime, ELevelTick TickType,
+                              FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 

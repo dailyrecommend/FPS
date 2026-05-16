@@ -14,13 +14,13 @@ class UJumpAbility;
 class UDashAbility;
 class USlamAbility;
 class UWallJumpAbility;
-class UGlissandoAbility;
+class USlideAbility;
 
 class UWeaponRegistry;
 class UGunWeapon;
 class USwordWeapon;
-class UFocusSkill;
-class UIajutsuSkill;
+class UGunSkill;
+class USwordSkill;
 
 class UAnimationPlayerComponent;
 class UCameraEffectsComponent;
@@ -48,29 +48,23 @@ private:
     void InjectAndRegisterAbilities();
     void InjectAndRegisterWeapons();
 
-    //~ Visual root
-    UPROPERTY(VisibleAnywhere, Category = "Camera") TObjectPtr<UCameraComponent>       Camera;
-    UPROPERTY(VisibleAnywhere, Category = "Mesh")   TObjectPtr<USkeletalMeshComponent> ArmsMesh;
+    UPROPERTY(VisibleAnywhere, Category = "Camera")       TObjectPtr<UCameraComponent>             Camera;
+    UPROPERTY(VisibleAnywhere, Category = "Mesh")         TObjectPtr<USkeletalMeshComponent>       ArmsMesh;
+    UPROPERTY(VisibleAnywhere, Category = "Input")        TObjectPtr<UPlayerInputRouter>           InputRouter;
 
-    //~ Input
-    UPROPERTY(VisibleAnywhere, Category = "Input")  TObjectPtr<UPlayerInputRouter>     InputRouter;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UAbilityRegistry>             AbilityRegistry;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UJumpAbility>                 JumpAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UDashAbility>                 DashAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<USlamAbility>                 SlamAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UWallJumpAbility>             WallJumpAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<USlideAbility>                SlideAbility;
 
-    //~ Movement domain
-    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UAbilityRegistry>     AbilityRegistry;
-    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UJumpAbility>         JumpAbility;
-    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UDashAbility>         DashAbility;
-    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<USlamAbility>         SlamAbility;
-    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UWallJumpAbility>     WallJumpAbility;
-    UPROPERTY(VisibleAnywhere, Category = "Movement") TObjectPtr<UGlissandoAbility>    GlissandoAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<UWeaponRegistry>              WeaponRegistry;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<UGunWeapon>                   GunWeapon;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<USwordWeapon>                 SwordWeapon;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<UGunSkill>                    GunSkill;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<USwordSkill>                  SwordSkill;
 
-    //~ Weapons domain
-    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<UWeaponRegistry>        WeaponRegistry;
-    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<UGunWeapon>             GunWeapon;
-    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<USwordWeapon>           SwordWeapon;
-    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<UFocusSkill>            FocusSkill;
-    UPROPERTY(VisibleAnywhere, Category = "Weapon") TObjectPtr<UIajutsuSkill>          IajutsuSkill;
-
-    //~ Presentation
-    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UAnimationPlayerComponent> AnimationPlayer;
-    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UCameraEffectsComponent>   CameraEffects;
+    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UAnimationPlayerComponent>    AnimationPlayer;
+    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UCameraEffectsComponent>      CameraEffects;
 };

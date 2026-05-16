@@ -30,25 +30,22 @@ void UPlayerInputRouter::BindInputActions(UInputComponent* PlayerInputComponent)
     UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
     if (!Input) return;
 
-    if (InputConfig->IA_Move)            Input->BindAction(InputConfig->IA_Move,            ETriggerEvent::Triggered, this, &UPlayerInputRouter::Input_Move);
-    if (InputConfig->IA_Move)            Input->BindAction(InputConfig->IA_Move,            ETriggerEvent::Completed, this, &UPlayerInputRouter::Input_Move);
-    if (InputConfig->IA_Look)            Input->BindAction(InputConfig->IA_Look,            ETriggerEvent::Triggered, this, &UPlayerInputRouter::Input_Look);
-
-    if (InputConfig->IA_Jump)            Input->BindAction(InputConfig->IA_Jump,            ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_JumpStarted);
-    if (InputConfig->IA_Dash)            Input->BindAction(InputConfig->IA_Dash,            ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_DashStarted);
-    if (InputConfig->IA_Slam)            Input->BindAction(InputConfig->IA_Slam,            ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_SlamStarted);
-    if (InputConfig->IA_Slide)           Input->BindAction(InputConfig->IA_Slide,           ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_SlideStarted);
-    if (InputConfig->IA_Slide)           Input->BindAction(InputConfig->IA_Slide,           ETriggerEvent::Completed, this, &UPlayerInputRouter::Input_SlideCompleted);
-
-    if (InputConfig->IA_Attack)          Input->BindAction(InputConfig->IA_Attack,          ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_AttackStarted);
-    if (InputConfig->IA_WeaponSkill)     Input->BindAction(InputConfig->IA_WeaponSkill,     ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSkillStarted);
-    if (InputConfig->IA_WeaponSkill)     Input->BindAction(InputConfig->IA_WeaponSkill,     ETriggerEvent::Completed, this, &UPlayerInputRouter::Input_WeaponSkillCompleted);
-
-    if (InputConfig->IA_WeaponSwapGun)   Input->BindAction(InputConfig->IA_WeaponSwapGun,   ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSwapGun);
-    if (InputConfig->IA_WeaponSwapSword) Input->BindAction(InputConfig->IA_WeaponSwapSword, ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSwapSword);
-    if (InputConfig->IA_WeaponSwapScroll)Input->BindAction(InputConfig->IA_WeaponSwapScroll,ETriggerEvent::Triggered, this, &UPlayerInputRouter::Input_WeaponSwapScroll);
-    if (InputConfig->IA_WeaponSwapNext)  Input->BindAction(InputConfig->IA_WeaponSwapNext,  ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSwapNext);
-    if (InputConfig->IA_WeaponSwapPrev)  Input->BindAction(InputConfig->IA_WeaponSwapPrev,  ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSwapPrev);
+    if (InputConfig->IA_Move)             Input->BindAction(InputConfig->IA_Move,             ETriggerEvent::Triggered, this, &UPlayerInputRouter::Input_Move);
+    if (InputConfig->IA_Move)             Input->BindAction(InputConfig->IA_Move,             ETriggerEvent::Completed, this, &UPlayerInputRouter::Input_Move);
+    if (InputConfig->IA_Look)             Input->BindAction(InputConfig->IA_Look,             ETriggerEvent::Triggered, this, &UPlayerInputRouter::Input_Look);
+    if (InputConfig->IA_Jump)             Input->BindAction(InputConfig->IA_Jump,             ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_JumpStarted);
+    if (InputConfig->IA_Dash)             Input->BindAction(InputConfig->IA_Dash,             ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_DashStarted);
+    if (InputConfig->IA_Slam)             Input->BindAction(InputConfig->IA_Slam,             ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_SlamStarted);
+    if (InputConfig->IA_Slide)            Input->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_SlideStarted);
+    if (InputConfig->IA_Slide)            Input->BindAction(InputConfig->IA_Slide,            ETriggerEvent::Completed, this, &UPlayerInputRouter::Input_SlideCompleted);
+    if (InputConfig->IA_Attack)           Input->BindAction(InputConfig->IA_Attack,           ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_AttackStarted);
+    if (InputConfig->IA_WeaponSkill)      Input->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSkillStarted);
+    if (InputConfig->IA_WeaponSkill)      Input->BindAction(InputConfig->IA_WeaponSkill,      ETriggerEvent::Completed, this, &UPlayerInputRouter::Input_WeaponSkillCompleted);
+    if (InputConfig->IA_WeaponSwapGun)    Input->BindAction(InputConfig->IA_WeaponSwapGun,    ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSwapGun);
+    if (InputConfig->IA_WeaponSwapSword)  Input->BindAction(InputConfig->IA_WeaponSwapSword,  ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSwapSword);
+    if (InputConfig->IA_WeaponSwapScroll) Input->BindAction(InputConfig->IA_WeaponSwapScroll, ETriggerEvent::Triggered, this, &UPlayerInputRouter::Input_WeaponSwapScroll);
+    if (InputConfig->IA_WeaponSwapNext)   Input->BindAction(InputConfig->IA_WeaponSwapNext,   ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSwapNext);
+    if (InputConfig->IA_WeaponSwapPrev)   Input->BindAction(InputConfig->IA_WeaponSwapPrev,   ETriggerEvent::Started,   this, &UPlayerInputRouter::Input_WeaponSwapPrev);
 }
 
 FAbilityContext UPlayerInputRouter::BuildContext() const
@@ -90,7 +87,6 @@ void UPlayerInputRouter::Input_Move(const FInputActionValue& Value)
 void UPlayerInputRouter::Input_Look(const FInputActionValue& Value)
 {
     const FVector2D Axis = Value.Get<FVector2D>();
-
     ACharacter* Owner = OwnerCharacter.Get();
     if (!Owner) return;
 
@@ -119,13 +115,13 @@ void UPlayerInputRouter::Input_SlamStarted()
 void UPlayerInputRouter::Input_SlideStarted()
 {
     if (UAbilityRegistry* Registry = AbilityRegistry.Get())
-        Registry->TryActivate(TEXT("Glissando"), BuildContext());
+        Registry->TryActivate(TEXT("Slide"), BuildContext());
 }
 
 void UPlayerInputRouter::Input_SlideCompleted()
 {
     if (UAbilityRegistry* Registry = AbilityRegistry.Get())
-        Registry->Cancel(TEXT("Glissando"));
+        Registry->Cancel(TEXT("Slide"));
 }
 
 void UPlayerInputRouter::Input_AttackStarted()
@@ -139,10 +135,7 @@ void UPlayerInputRouter::Input_AttackStarted()
 
     TScriptInterface<IWeaponSkill> Skill = IWeapon::Execute_GetSkill(WeaponObj);
     if (UObject* SkillObj = Skill.GetObject())
-    {
-        if (IWeaponSkill::Execute_IsSkillActive(SkillObj))
-            return;
-    }
+        if (IWeaponSkill::Execute_IsSkillActive(SkillObj)) return;
 
     IWeapon::Execute_TryAttack(WeaponObj);
 }
@@ -192,11 +185,11 @@ void UPlayerInputRouter::Input_WeaponSwapScroll(const FInputActionValue& Value)
     UWeaponRegistry* Registry = WeaponRegistry.Get();
     if (!Registry) return;
 
-    const float ScrollAxis = Value.Get<float>();
-    if (FMath::IsNearlyZero(ScrollAxis)) return;
+    const float Axis = Value.Get<float>();
+    if (FMath::IsNearlyZero(Axis)) return;
 
-    if (ScrollAxis > 0.f) Registry->CycleNext();
-    else                  Registry->CyclePrevious();
+    if (Axis > 0.f) Registry->CycleNext();
+    else            Registry->CyclePrevious();
 }
 
 void UPlayerInputRouter::Input_WeaponSwapNext()

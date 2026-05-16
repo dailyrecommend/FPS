@@ -6,13 +6,13 @@
 #include "Movement/Abilities/Dash/DashAbility.h"
 #include "Movement/Abilities/Slam/SlamAbility.h"
 #include "Movement/Abilities/WallJump/WallJumpAbility.h"
-#include "Movement/Abilities/Glissando/GlissandoAbility.h"
+#include "Movement/Abilities/Slide/SlideAbility.h"
 
 #include "Weapons/Registry/WeaponRegistry.h"
 #include "Weapons/Implementations/Gun/GunWeapon.h"
 #include "Weapons/Implementations/Sword/SwordWeapon.h"
-#include "Weapons/Implementations/Focus/FocusSkill.h"
-#include "Weapons/Implementations/Iajutsu/IajutsuSkill.h"
+#include "Weapons/Implementations/GunSkill/GunSkill.h"
+#include "Weapons/Implementations/SwordSkill/SwordSkill.h"
 
 #include "Presentation/Components/AnimationPlayerComponent.h"
 #include "Presentation/Components/CameraEffectsComponent.h"
@@ -39,20 +39,20 @@ APlayerCharacter::APlayerCharacter()
     ArmsMesh->bCastDynamicShadow = false;
     ArmsMesh->CastShadow         = false;
 
-    InputRouter = CreateDefaultSubobject<UPlayerInputRouter>(TEXT("InputRouter"));
+    InputRouter     = CreateDefaultSubobject<UPlayerInputRouter>(TEXT("InputRouter"));
 
-    AbilityRegistry  = CreateDefaultSubobject<UAbilityRegistry>(TEXT("AbilityRegistry"));
-    JumpAbility      = CreateDefaultSubobject<UJumpAbility>     (TEXT("JumpAbility"));
-    DashAbility      = CreateDefaultSubobject<UDashAbility>     (TEXT("DashAbility"));
-    SlamAbility      = CreateDefaultSubobject<USlamAbility>     (TEXT("SlamAbility"));
-    WallJumpAbility  = CreateDefaultSubobject<UWallJumpAbility> (TEXT("WallJumpAbility"));
-    GlissandoAbility = CreateDefaultSubobject<UGlissandoAbility>(TEXT("GlissandoAbility"));
+    AbilityRegistry = CreateDefaultSubobject<UAbilityRegistry> (TEXT("AbilityRegistry"));
+    JumpAbility     = CreateDefaultSubobject<UJumpAbility>     (TEXT("JumpAbility"));
+    DashAbility     = CreateDefaultSubobject<UDashAbility>     (TEXT("DashAbility"));
+    SlamAbility     = CreateDefaultSubobject<USlamAbility>     (TEXT("SlamAbility"));
+    WallJumpAbility = CreateDefaultSubobject<UWallJumpAbility> (TEXT("WallJumpAbility"));
+    SlideAbility    = CreateDefaultSubobject<USlideAbility>    (TEXT("SlideAbility"));
 
-    WeaponRegistry = CreateDefaultSubobject<UWeaponRegistry>(TEXT("WeaponRegistry"));
-    GunWeapon      = CreateDefaultSubobject<UGunWeapon>     (TEXT("GunWeapon"));
-    SwordWeapon    = CreateDefaultSubobject<USwordWeapon>   (TEXT("SwordWeapon"));
-    FocusSkill     = CreateDefaultSubobject<UFocusSkill>    (TEXT("FocusSkill"));
-    IajutsuSkill   = CreateDefaultSubobject<UIajutsuSkill>  (TEXT("IajutsuSkill"));
+    WeaponRegistry  = CreateDefaultSubobject<UWeaponRegistry>  (TEXT("WeaponRegistry"));
+    GunWeapon       = CreateDefaultSubobject<UGunWeapon>       (TEXT("GunWeapon"));
+    SwordWeapon     = CreateDefaultSubobject<USwordWeapon>     (TEXT("SwordWeapon"));
+    GunSkill        = CreateDefaultSubobject<UGunSkill>        (TEXT("GunSkill"));
+    SwordSkill      = CreateDefaultSubobject<USwordSkill>      (TEXT("SwordSkill"));
 
     AnimationPlayer = CreateDefaultSubobject<UAnimationPlayerComponent>(TEXT("AnimationPlayer"));
     CameraEffects   = CreateDefaultSubobject<UCameraEffectsComponent>  (TEXT("CameraEffects"));
@@ -62,9 +62,6 @@ void APlayerCharacter::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
 
-    // All components have been constructed by now. Wire dependencies before any input
-    // or BeginPlay logic runs. This must NOT depend on a controller — possession may
-    // not have happened yet on the client.
     WirePresentation();
     InjectAndRegisterAbilities();
     InjectAndRegisterWeapons();
@@ -80,9 +77,6 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-    // SetupPlayerInputComponent runs after possession, so the controller is guaranteed
-    // valid here. This is the safe place to both register input mapping contexts and
-    // bind input actions.
     RegisterInputMappingContext();
 
     if (InputRouter)
@@ -98,7 +92,6 @@ void APlayerCharacter::RegisterInputMappingContext()
 
     UEnhancedInputLocalPlayerSubsystem* InputSys =
         ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
-
     if (!InputSys) return;
 
     if (InputConfig->IMC_KeyboardMouse)
@@ -121,21 +114,21 @@ void APlayerCharacter::InjectAndRegisterAbilities()
 {
     if (!AbilityRegistry) return;
 
-    if (JumpAbility)      JumpAbility     ->InjectDependencies(this);
-    if (DashAbility)      DashAbility     ->InjectDependencies(this);
-    if (SlamAbility)      SlamAbility     ->InjectDependencies(this);
-    if (WallJumpAbility)  WallJumpAbility ->InjectDependencies(this);
-    if (GlissandoAbility)
+    if (JumpAbility)     JumpAbility    ->InjectDependencies(this);
+    if (DashAbility)     DashAbility    ->InjectDependencies(this);
+    if (SlamAbility)     SlamAbility    ->InjectDependencies(this);
+    if (WallJumpAbility) WallJumpAbility->InjectDependencies(this);
+    if (SlideAbility)
     {
-        GlissandoAbility->InjectDependencies(this);
-        GlissandoAbility->AttachCameraEffects(CameraEffects);
+        SlideAbility->InjectDependencies(this);
+        SlideAbility->AttachCameraEffects(CameraEffects);
     }
 
     AbilityRegistry->Register(JumpAbility);
     AbilityRegistry->Register(DashAbility);
     AbilityRegistry->Register(SlamAbility);
     AbilityRegistry->Register(WallJumpAbility);
-    AbilityRegistry->Register(GlissandoAbility);
+    AbilityRegistry->Register(SlideAbility);
 }
 
 void APlayerCharacter::InjectAndRegisterWeapons()
@@ -152,24 +145,24 @@ void APlayerCharacter::InjectAndRegisterWeapons()
     {
         SwordWeapon->InjectDependencies(this, Camera);
         SwordWeapon->AttachAnimationPlayer(AnimationPlayer);
-        SwordWeapon->SetupHitbox();  // explicit ordering: depends on InjectDependencies
+        SwordWeapon->SetupHitbox();
     }
 
-    if (FocusSkill && GunWeapon)
+    if (GunSkill && GunWeapon)
     {
-        FocusSkill->InjectDependencies(this, Camera);
-        FocusSkill->AttachAnimationPlayer(AnimationPlayer);
-        FocusSkill->AttachCameraEffects(CameraEffects);
-        FocusSkill->AttachGun(GunWeapon);
-        GunWeapon->AttachSkill(FocusSkill);
+        GunSkill->InjectDependencies(this, Camera);
+        GunSkill->AttachAnimationPlayer(AnimationPlayer);
+        GunSkill->AttachCameraEffects(CameraEffects);
+        GunSkill->AttachGun(GunWeapon);
+        GunWeapon->AttachSkill(GunSkill);
     }
 
-    if (IajutsuSkill && SwordWeapon)
+    if (SwordSkill && SwordWeapon)
     {
-        IajutsuSkill->InjectDependencies(this, Camera);
-        IajutsuSkill->AttachAnimationPlayer(AnimationPlayer);
-        IajutsuSkill->AttachSword(SwordWeapon);
-        SwordWeapon->AttachSkill(IajutsuSkill);
+        SwordSkill->InjectDependencies(this, Camera);
+        SwordSkill->AttachAnimationPlayer(AnimationPlayer);
+        SwordSkill->AttachSword(SwordWeapon);
+        SwordWeapon->AttachSkill(SwordSkill);
     }
 
     WeaponRegistry->Register(GunWeapon);

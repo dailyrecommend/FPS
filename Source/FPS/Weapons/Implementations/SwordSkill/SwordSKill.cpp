@@ -1,4 +1,4 @@
-#include "Weapons/Implementations/Iajutsu/IajutsuSkill.h"
+#include "Weapons/Implementations/SwordSkill/SwordSkill.h"
 #include "Weapons/Implementations/Sword/SwordWeapon.h"
 #include "Combat/Builders/HitResultBuilder.h"
 #include "Core/Subsystems/TimeDilationSubsystem.h"
@@ -10,43 +10,42 @@
 #include "Engine/World.h"
 #include "Misc/App.h"
 
-UIajutsuSkill::UIajutsuSkill()
+USwordSkill::USwordSkill()
 {
 }
 
-bool UIajutsuSkill::OnStartHold()
+bool USwordSkill::OnStartHold()
 {
-
     if (bIsDashing || bIsStunned) return false;
-    
+
     HoldElapsed = 0.f;
     RequestTimeDilation();
     PlayMontage(HoldMontage);
-    OnIajutsuStarted.Broadcast();
+    OnSwordSkillStarted.Broadcast();
     return true;
 }
 
-void UIajutsuSkill::OnEndHold()
+void USwordSkill::OnEndHold()
 {
     ReleaseTimeDilation();
     PerformDash();
 }
 
-void UIajutsuSkill::OnCancel()
+void USwordSkill::OnCancel()
 {
     HoldElapsed = 0.f;
     ReleaseTimeDilation();
-    OnIajutsuCancelled.Broadcast();
+    OnSwordSkillCancelled.Broadcast();
 }
 
-void UIajutsuSkill::EndPlay(EEndPlayReason::Type Reason)
+void USwordSkill::EndPlay(EEndPlayReason::Type Reason)
 {
     ReleaseTimeDilation();
     RestorePawnCollision();
     Super::EndPlay(Reason);
 }
 
-void UIajutsuSkill::PerformDash()
+void USwordSkill::PerformDash()
 {
     ACharacter* Owner = GetOwnerSafe();
     if (!Owner || !GetCameraSafe()) return;
@@ -64,9 +63,9 @@ void UIajutsuSkill::PerformDash()
     PlayMontage(DashMontage);
 }
 
-FVector UIajutsuSkill::CalculateDestination() const
+FVector USwordSkill::CalculateDestination() const
 {
-    ACharacter* Owner = GetOwnerSafe();
+    ACharacter* Owner     = GetOwnerSafe();
     UCameraComponent* Cam = GetCameraSafe();
     if (!Owner || !Cam || !Owner->GetWorld()) return FVector::ZeroVector;
 
@@ -87,19 +86,14 @@ FVector UIajutsuSkill::CalculateDestination() const
     FCollisionObjectQueryParams ObjectParams;
     ObjectParams.AddObjectTypesToQuery(ECC_WorldStatic);
 
-    const bool bHitObstacle = Owner->GetWorld()->SweepSingleByObjectType(
-        Hit, Start, End, FQuat::Identity,
-        ObjectParams,
-        FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalf),
-        Params);
+    const bool bHit = Owner->GetWorld()->SweepSingleByObjectType(
+        Hit, Start, End, FQuat::Identity, ObjectParams,
+        FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalf), Params);
 
-    if (bHitObstacle)
-        return Hit.Location + Hit.Normal * (CapsuleRadius + 5.f);
-
-    return End;
+    return bHit ? Hit.Location + Hit.Normal * (CapsuleRadius + 5.f) : End;
 }
 
-void UIajutsuSkill::HitActorsAlongPath(const FVector& Start, const FVector& End)
+void USwordSkill::HitActorsAlongPath(const FVector& Start, const FVector& End)
 {
     ACharacter* Owner = GetOwnerSafe();
     if (!Owner || !Owner->GetWorld()) return;
@@ -112,15 +106,14 @@ void UIajutsuSkill::HitActorsAlongPath(const FVector& Start, const FVector& End)
 
     TArray<FHitResult> Hits;
     Owner->GetWorld()->SweepMultiByChannel(
-        Hits, Start, End, FQuat::Identity,
-        ECC_Pawn,
+        Hits, Start, End, FQuat::Identity, ECC_Pawn,
         FCollisionShape::MakeCapsule(
             Capsule->GetScaledCapsuleRadius(),
             Capsule->GetScaledCapsuleHalfHeight()),
         Params);
 
-    TSet<AActor*> HitActors;
-    AController* Instigator = Owner->GetController();
+    TSet<AActor*>  HitActors;
+    AController*   Instigator = Owner->GetController();
 
     for (const FHitResult& Hit : Hits)
     {
@@ -137,12 +130,12 @@ void UIajutsuSkill::HitActorsAlongPath(const FVector& Start, const FVector& End)
             .OfDamageType(EWeaponDamageType::Sword)
             .OfHitType(EHitType::Iajutsu);
 
-        OnIajutsuHit.Broadcast(Builder.Build());
+        OnSwordSkillHit.Broadcast(Builder.Build());
         Builder.Apply();
     }
 }
 
-void UIajutsuSkill::RequestTimeDilation()
+void USwordSkill::RequestTimeDilation()
 {
     ACharacter* Owner = GetOwnerSafe();
     if (!Owner || !Owner->GetWorld()) return;
@@ -150,11 +143,7 @@ void UIajutsuSkill::RequestTimeDilation()
     UTimeDilationSubsystem* TimeSys = Owner->GetWorld()->GetSubsystem<UTimeDilationSubsystem>();
     if (!TimeSys) return;
 
-    if (TimeDilationHandle != 0)
-    {
-        TimeSys->PopRequest(TimeDilationHandle);
-        TimeDilationHandle = 0;
-    }
+    if (TimeDilationHandle != 0) { TimeSys->PopRequest(TimeDilationHandle); TimeDilationHandle = 0; }
 
     FTimeDilationRequest Request;
     Request.WorldDilation = SlowWorldDilation;
@@ -167,7 +156,7 @@ void UIajutsuSkill::RequestTimeDilation()
     TimeDilationHandle = TimeSys->PushRequest(Request);
 }
 
-void UIajutsuSkill::ReleaseTimeDilation()
+void USwordSkill::ReleaseTimeDilation()
 {
     if (TimeDilationHandle == 0) return;
 
@@ -180,34 +169,30 @@ void UIajutsuSkill::ReleaseTimeDilation()
     TimeDilationHandle = 0;
 }
 
-void UIajutsuSkill::DisablePawnCollision()
+void USwordSkill::DisablePawnCollision()
 {
     ACharacter* Owner = GetOwnerSafe();
     if (!Owner) return;
-
-    if (UCapsuleComponent* Capsule = Owner->GetCapsuleComponent())
-        Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+    if (UCapsuleComponent* Cap = Owner->GetCapsuleComponent())
+        Cap->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 }
 
-void UIajutsuSkill::RestorePawnCollision()
+void USwordSkill::RestorePawnCollision()
 {
     ACharacter* Owner = GetOwnerSafe();
     if (!Owner) return;
-
-    if (UCapsuleComponent* Capsule = Owner->GetCapsuleComponent())
-        Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+    if (UCapsuleComponent* Cap = Owner->GetCapsuleComponent())
+        Cap->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
 }
 
-void UIajutsuSkill::TickHold(float UnscaledDelta)
+void USwordSkill::TickHold(float UnscaledDelta)
 {
     if (!bIsActive) return;
-
     HoldElapsed += UnscaledDelta;
-    if (HoldElapsed >= HoldMaxDuration)
-        Cancel();
+    if (HoldElapsed >= HoldMaxDuration) Cancel();
 }
 
-void UIajutsuSkill::TickDash(float UnscaledDelta)
+void USwordSkill::TickDash(float UnscaledDelta)
 {
     if (!bIsDashing) return;
 
@@ -228,25 +213,21 @@ void UIajutsuSkill::TickDash(float UnscaledDelta)
             MoveComp->Velocity = FVector::ZeroVector;
 
         RestorePawnCollision();
-
         bIsStunned  = true;
         StunElapsed = 0.f;
-
-        OnIajutsuEnded.Broadcast();
+        OnSwordSkillEnded.Broadcast();
     }
 }
 
-void UIajutsuSkill::TickStun(float UnscaledDelta)
+void USwordSkill::TickStun(float UnscaledDelta)
 {
     if (!bIsStunned) return;
-
     StunElapsed += UnscaledDelta;
-    if (StunElapsed >= StunDuration)
-        bIsStunned = false;
+    if (StunElapsed >= StunDuration) bIsStunned = false;
 }
 
-void UIajutsuSkill::TickComponent(float DeltaTime, ELevelTick TickType,
-                                  FActorComponentTickFunction* ThisTickFunction)
+void USwordSkill::TickComponent(float DeltaTime, ELevelTick TickType,
+                                FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 

@@ -1,15 +1,15 @@
-#include "Movement/Abilities/Glissando/GlissandoAbility.h"
+#include "Movement/Abilities/Slide/SlideAbility.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 
-UGlissandoAbility::UGlissandoAbility()
+USlideAbility::USlideAbility()
 {
-    AbilityId = TEXT("Glissando");
+    AbilityId = TEXT("Slide");
     Cooldown  = 0.f;
 }
 
-bool UGlissandoAbility::CheckPreconditions(const FAbilityContext& /*Context*/) const
+bool USlideAbility::CheckPreconditions(const FAbilityContext& /*Context*/) const
 {
     ACharacter* Owner = GetOwnerSafe();
     UCharacterMovementComponent* MoveComp = GetMoveComp();
@@ -20,7 +20,7 @@ bool UGlissandoAbility::CheckPreconditions(const FAbilityContext& /*Context*/) c
         && !bIsActive;
 }
 
-EActivationResult UGlissandoAbility::OnTryActivate(const FAbilityContext& Context)
+EActivationResult USlideAbility::OnTryActivate(const FAbilityContext& Context)
 {
     ACharacter* Owner = GetOwnerSafe();
     UCharacterMovementComponent* MoveComp = GetMoveComp();
@@ -35,28 +35,28 @@ EActivationResult UGlissandoAbility::OnTryActivate(const FAbilityContext& Contex
     const FVector         Right   = YawMatrix.GetUnitAxis(EAxis::Y);
 
     if (!Context.MoveInput.IsNearlyZero())
-        GlissandoDirection = (Forward * Context.MoveInput.Y + Right * Context.MoveInput.X).GetSafeNormal2D();
+        SlideDirection = (Forward * Context.MoveInput.Y + Right * Context.MoveInput.X).GetSafeNormal2D();
     else
-        GlissandoDirection = Owner->GetActorForwardVector().GetSafeNormal2D();
+        SlideDirection = Owner->GetActorForwardVector().GetSafeNormal2D();
 
-    if (GlissandoDirection.IsNearlyZero())
+    if (SlideDirection.IsNearlyZero())
         return EActivationResult::Failed_NotReady;
 
-    MoveComp->Velocity                   = GlissandoDirection * BoostSpeed;
+    MoveComp->Velocity                   = SlideDirection * BoostSpeed;
     MoveComp->GroundFriction             = 0.f;
     MoveComp->BrakingDecelerationWalking = 0.f;
 
     if (UObject* Effects = CameraEffects.GetObject())
     {
         HeightHandle = ICameraEffects::Execute_PushHeightOffset(Effects, HeightOffset, HeightInterp,    CameraPriority);
-        RollHandle   = ICameraEffects::Execute_PushRollOffset  (Effects, 0.f,         RollInterpSpeed, CameraPriority);
+        RollHandle   = ICameraEffects::Execute_PushRollOffset  (Effects, 0.f,          RollInterpSpeed, CameraPriority);
     }
 
     LastMoveInput = Context.MoveInput;
     return EActivationResult::Success;
 }
 
-void UGlissandoAbility::OnDeactivate()
+void USlideAbility::OnDeactivate()
 {
     UCharacterMovementComponent* MoveComp = GetMoveComp();
     if (MoveComp)
@@ -75,18 +75,18 @@ void UGlissandoAbility::OnDeactivate()
     RollHandle   = 0;
 }
 
-void UGlissandoAbility::TickComponent(float DeltaTime, ELevelTick TickType,
-                                      FActorComponentTickFunction* ThisTickFunction)
+void USlideAbility::TickComponent(float DeltaTime, ELevelTick TickType,
+                                  FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
     if (bIsActive)
-        TickGlissando(DeltaTime, LastMoveInput);
+        TickSlide(DeltaTime, LastMoveInput);
 
     LastMoveInput = FVector2D::ZeroVector;
 }
 
-void UGlissandoAbility::TickGlissando(float DeltaTime, const FVector2D& MoveInput)
+void USlideAbility::TickSlide(float DeltaTime, const FVector2D& MoveInput)
 {
     ACharacter* Owner = GetOwnerSafe();
     UCharacterMovementComponent* MoveComp = GetMoveComp();
@@ -94,11 +94,11 @@ void UGlissandoAbility::TickGlissando(float DeltaTime, const FVector2D& MoveInpu
 
     if (Owner->GetVelocity().Size2D() < MinSpeed) { Deactivate_Implementation(); return; }
 
-    const FVector GlissandoRight  = FVector::CrossProduct(FVector::UpVector, GlissandoDirection).GetSafeNormal();
-    const FVector LateralInput    = GlissandoRight * MoveInput.X * LateralControl * DeltaTime;
-    FVector       TargetVelocity  = GlissandoDirection * BoostSpeed + LateralInput;
-    TargetVelocity.Z              = MoveComp->Velocity.Z;
-    MoveComp->Velocity            = TargetVelocity;
+    const FVector SlideRight   = FVector::CrossProduct(FVector::UpVector, SlideDirection).GetSafeNormal();
+    const FVector LateralInput = SlideRight * MoveInput.X * LateralControl * DeltaTime;
+    FVector       TargetVel    = SlideDirection * BoostSpeed + LateralInput;
+    TargetVel.Z                = MoveComp->Velocity.Z;
+    MoveComp->Velocity         = TargetVel;
 
     const float TargetRoll = MoveInput.X * MaxRollDegrees;
     if (UObject* Effects = CameraEffects.GetObject())

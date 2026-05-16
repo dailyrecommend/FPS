@@ -21,25 +21,25 @@ EActivationResult UJumpAbility::OnTryActivate(const FAbilityContext& Context)
     UCharacterMovementComponent* MoveComp = GetMoveComp();
     if (!Owner || !MoveComp) return EActivationResult::Failed_NoOwner;
 
-    if (TryGlissandoExitJump())             { Deactivate_Implementation(); return EActivationResult::Success; }
-    if (TryGroundJump())                    { Deactivate_Implementation(); return EActivationResult::Success; }
-    if (TryDelegateWallJump(Context))       { Deactivate_Implementation(); return EActivationResult::Success; }
-    if (TryCoyoteJump())                    { Deactivate_Implementation(); return EActivationResult::Success; }
+    if (TrySlideExitJump())             { Deactivate_Implementation(); return EActivationResult::Success; }
+    if (TryGroundJump())                { Deactivate_Implementation(); return EActivationResult::Success; }
+    if (TryDelegateWallJump(Context))   { Deactivate_Implementation(); return EActivationResult::Success; }
+    if (TryCoyoteJump())                { Deactivate_Implementation(); return EActivationResult::Success; }
 
     BufferJump();
     Deactivate_Implementation();
     return EActivationResult::Failed_NotReady;
 }
 
-bool UJumpAbility::TryGlissandoExitJump()
+bool UJumpAbility::TrySlideExitJump()
 {
     UAbilityRegistry* Registry = GetRegistry();
     ACharacter* Owner = GetOwnerSafe();
     if (!Registry || !Owner) return false;
 
-    if (!Registry->IsAbilityActive(GlissandoAbilityId)) return false;
+    if (!Registry->IsAbilityActive(SlideAbilityId)) return false;
 
-    Registry->Cancel(GlissandoAbilityId);
+    Registry->Cancel(SlideAbilityId);
     Owner->Jump();
     return true;
 }
@@ -130,11 +130,7 @@ void UJumpAbility::TickJumpBuffer(float DeltaTime)
 
     ACharacter* Owner = GetOwnerSafe();
     UCharacterMovementComponent* MoveComp = GetMoveComp();
-    if (!Owner || !MoveComp)
-    {
-        bJumpBuffered = false;
-        return;
-    }
+    if (!Owner || !MoveComp) { bJumpBuffered = false; return; }
 
     JumpBufferCounter -= DeltaTime;
 
