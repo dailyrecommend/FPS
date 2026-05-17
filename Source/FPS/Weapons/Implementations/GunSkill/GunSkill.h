@@ -42,6 +42,10 @@ protected:
 private:
     int32 CalculateRicochetCount(float ElapsedSeconds) const;
     void  TickCharge(float UnscaledDelta);
+    void  TickGunRotation(float DeltaTime);
+    void  ResetGunRotation();
+
+    USkeletalMeshComponent* FindWeaponMesh() const;
 
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float CooldownDuration = 5.f;
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill") float ChargedDamage    = 500.f;
@@ -51,25 +55,23 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill")
     TArray<float> RicochetTimeThresholds = { 0.5f, 1.0f, 1.5f, 2.0f };
 
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Anim") TObjectPtr<UAnimMontage> GunSkillMontage;
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Rotation")
+    float GunRotationSpeed = 720.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Rotation")
+    FRotator GunInitialRotation = FRotator(180.f, 0.f, 90.f);
+
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Rotation")
+    FName WeaponMeshComponentName = TEXT("WeaponGunMesh");
+
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Anim")
+    TObjectPtr<UAnimMontage> GunSkillMontage;
 
     UPROPERTY()
     TWeakObjectPtr<UGunWeapon> Gun;
 
-    float ChargeElapsed        = 0.f;
-    int32 CurrentRicochetCount = 0;
-    int32 LastBroadcastedCount = -1;
-
-
-    //temp anim
-    void TickGunRotation(float DeltaTime);
-    void ResetGunRotation();
-
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Rotation")
-    float GunRotationSpeed = 360.f;  // 초당 720도 (2바퀴)
-
-    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Rotation")
-    FVector GunRotationAxis = FVector(0.f, 0.f, 1.f);  // Local X축 기준
-
-    float CurrentGunRoll = 0.f;
+    float ChargeElapsed          = 0.f;
+    float AccumulatedZRotation   = 0.f;
+    int32 CurrentRicochetCount   = 0;
+    int32 LastBroadcastedCount   = -1;
 };

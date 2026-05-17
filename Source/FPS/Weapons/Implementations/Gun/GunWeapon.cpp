@@ -1,9 +1,11 @@
 #include "Weapons/Implementations/Gun/GunWeapon.h"
 #include "Combat/Builders/HitResultBuilder.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SceneComponent.h"
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
 #include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 
 UGunWeapon::UGunWeapon()
 {
@@ -26,6 +28,57 @@ bool UGunWeapon::TryAttack_Implementation()
     return true;
 }
 
+void UGunWeapon::FireHitscan(float Damage, EHitType HitType)
+{
+    ACharacter* Owner = GetOwnerSafe();
+    UCameraComponent* Cam = GetCameraSafe();
+    if (!Owner || !Cam || !Owner->GetWorld()) return;
+
+    const FVector Start = Cam->GetComponentLocation();
+    const FVector End   = Start + Cam->GetForwardVector() * FireRange;
+
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(Owner);
+
+    // 총구 트레일 시작점
+    FVector TrailStart = Start;
+    if (USceneComponent* Muzzle = Cast<USceneComponent>(
+        Owner->GetDefaultSubobjectByName(MuzzlePointName)))
+        TrailStart = Muzzle->GetComponentLocation();
+
+    FHitResult Hit;
+    const bool bHit = Owner->GetWorld()->LineTraceSingleByChannel(
+        Hit, Start, End, ECC_Visibility, Params);
+
+    if (!bHit)
+    {
+        SpawnTrailEffect(TrailStart, End);
+        return;
+    }
+
+    SpawnTrailEffect(TrailStart, Hit.ImpactPoint);
+
+    // IDamageable인 경우에만 데미지
+    if (!Hit.GetActor() || !Hit.GetActor()->Implements<UDamageable>()) return;
+
+    const FWeaponHitResult Result = FHitResultBuilder()
+        .From(Owner->GetController())
+        .FromHit(Hit)
+        .WithDamage(Damage)
+        .OfDamageType(EWeaponDamageType::Gun)
+        .OfHitType(HitType)
+        .Build();
+
+    OnGunHit.Broadcast(Result);
+    FHitResultBuilder()
+        .From(Owner->GetController())
+        .FromHit(Hit)
+        .WithDamage(Damage)
+        .OfDamageType(EWeaponDamageType::Gun)
+        .OfHitType(HitType)
+        .Apply();
+}
+
 void UGunWeapon::FireChargedShot(float Damage, float FireLockoutSeconds)
 {
     ACharacter* Owner = GetOwnerSafe();
@@ -42,128 +95,94 @@ void UGunWeapon::FireRicochetShot(float Damage, int32 RicochetCount, float FireL
     UCameraComponent* Cam = GetCameraSafe();
     if (!Owner || !Cam || !Owner->GetWorld()) return;
 
-    const FVector InitStart = Cam->GetComponentLocation();
-    const FVector InitEnd   = InitStart + Cam->GetForwardVector() * FireRange;
+    // 총구 트레일 시작점
+    FVector TrailStart = Cam->GetComponentLocation();
+    if (USceneComponent* Muzzle = Cast<USceneComponent>(
+        Owner->GetDefaultSubobjectByName(MuzzlePointName)))
+        TrailStart = Muzzle->GetComponentLocation();
 
-    FHitResult InitHit;
+    FVector RayStart     = Cam->GetComponentLocation();
+    FVector RayDir       = Cam->GetForwardVector();
+    AActor* LastHitActor = nullptr;
+    int32   BounceCount  = 0;
+
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(Owner);
 
-    const bool bInitHit = Owner->GetWorld()->LineTraceSingleByChannel(
-        InitHit, InitStart, InitEnd, ECC_Visibility, Params);
-
-    SpawnTrailEffect(InitStart, bInitHit ? InitHit.ImpactPoint : InitEnd);
-
-    if (!bInitHit || !InitHit.GetActor())
+    while (true)
     {
-        OnGunFired.Broadcast();
-        ApplyCooldownAfterShot(FireLockoutSeconds);
-        return;
-    }
+        const FVector RayEnd = RayStart + RayDir * FireRange;
 
-    // Apply damage to initial penetrated target
-    const FWeaponHitResult InitResult = FHitResultBuilder()
-        .From(Owner->GetController())
-        .FromHit(InitHit)
-        .WithDamage(Damage)
-        .OfDamageType(EWeaponDamageType::Gun)
-        .OfHitType(EHitType::Charged)
-        .Build();
+        FHitResult Hit;
+        const bool bHit = Owner->GetWorld()->LineTraceSingleByChannel(
+            Hit, RayStart, RayEnd, ECC_Visibility, Params);
 
-    OnGunHit.Broadcast(InitResult);
-    FHitResultBuilder()
-        .From(Owner->GetController())
-        .FromHit(InitHit)
-        .WithDamage(Damage)
-        .OfDamageType(EWeaponDamageType::Gun)
-        .OfHitType(EHitType::Charged)
-        .Apply();
-
-    // Ricochet chain
-    FVector BounceOrigin    = InitHit.ImpactPoint;
-    FVector BounceDirection = Cam->GetForwardVector();
-
-    for (int32 i = 0; i < RicochetCount; ++i)
-    {
-        FVector NextOrigin;
-        FVector NextDirection;
-
-        if (!PerformRicochetBounce(BounceOrigin, BounceDirection, Damage, NextOrigin, NextDirection))
+        if (!bHit)
+        {
+            // 아무것도 없음 — 트레일 그리고 종료
+            SpawnTrailEffect(TrailStart, RayEnd);
             break;
+        }
 
-        BounceOrigin    = NextOrigin;
-        BounceDirection = NextDirection;
+        AActor* HitActor  = Hit.GetActor();
+        const bool bIsEnemy = HitActor && HitActor->Implements<UDamageable>();
+
+        if (bIsEnemy)
+        {
+            // 적 맞음 — 데미지 + 관통 후 직진 계속
+            SpawnTrailEffect(TrailStart, Hit.ImpactPoint);
+
+            const FWeaponHitResult Result = FHitResultBuilder()
+                .From(Owner->GetController())
+                .FromHit(Hit)
+                .WithDamage(Damage)
+                .OfDamageType(EWeaponDamageType::Gun)
+                .OfHitType(EHitType::Charged)
+                .Build();
+
+            OnGunHit.Broadcast(Result);
+            FHitResultBuilder()
+                .From(Owner->GetController())
+                .FromHit(Hit)
+                .WithDamage(Damage)
+                .OfDamageType(EWeaponDamageType::Gun)
+                .OfHitType(EHitType::Charged)
+                .Apply();
+
+            // 관통 — 맞은 적 무시하고 계속 직진
+            TrailStart   = Hit.ImpactPoint;
+            RayStart     = Hit.ImpactPoint + RayDir * 5.f;
+            LastHitActor = HitActor;
+            Params.AddIgnoredActor(HitActor);
+        }
+        else
+        {
+            // 벽/사물 맞음 — 도탄 처리
+            SpawnTrailEffect(TrailStart, Hit.ImpactPoint);
+
+            if (BounceCount >= RicochetCount) break;
+
+            BounceCount++;
+
+            // 근처 적 자동 타겟 확인
+            AActor* NearestEnemy = FindNearestEnemy(Hit.ImpactPoint, LastHitActor);
+
+            if (NearestEnemy)
+            {
+                RayDir = (NearestEnemy->GetActorLocation() - Hit.ImpactPoint).GetSafeNormal();
+            }
+            else
+            {
+                RayDir = FMath::GetReflectionVector(RayDir, Hit.Normal);
+            }
+
+            TrailStart = Hit.ImpactPoint;
+            RayStart   = Hit.ImpactPoint + Hit.Normal * 2.f;
+        }
     }
 
     OnGunFired.Broadcast();
     ApplyCooldownAfterShot(FireLockoutSeconds);
-}
-
-bool UGunWeapon::PerformRicochetBounce(const FVector& Origin, const FVector& InDirection,
-                                       float Damage, FVector& OutBounceOrigin, FVector& OutBounceDirection)
-{
-    ACharacter* Owner = GetOwnerSafe();
-    if (!Owner || !Owner->GetWorld()) return false;
-
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(Owner);
-
-    AActor* NearestEnemy = FindNearestEnemy(Origin, Owner);
-
-    FVector BounceDirection;
-
-    if (NearestEnemy)
-    {
-        // Auto-target nearest enemy
-        BounceDirection = (NearestEnemy->GetActorLocation() - Origin).GetSafeNormal();
-    }
-    else
-    {
-        // Real reflection off nearest wall
-        const FVector RayEnd = Origin + InDirection * FireRange;
-
-        FHitResult WallHit;
-        if (!Owner->GetWorld()->LineTraceSingleByChannel(WallHit, Origin, RayEnd, ECC_WorldStatic, Params))
-            return false;
-
-        BounceDirection = FMath::GetReflectionVector(InDirection, WallHit.Normal);
-    }
-
-    const FVector BounceEnd = Origin + BounceDirection * FireRange;
-
-    SpawnTrailEffect(Origin, BounceEnd);
-
-    FHitResult BounceHit;
-    const bool bHit = Owner->GetWorld()->LineTraceSingleByChannel(
-        BounceHit, Origin, BounceEnd, ECC_Visibility, Params);
-
-    if (bHit && BounceHit.GetActor())
-    {
-        const FWeaponHitResult Result = FHitResultBuilder()
-            .From(Owner->GetController())
-            .FromHit(BounceHit)
-            .WithDamage(Damage)
-            .OfDamageType(EWeaponDamageType::Gun)
-            .OfHitType(EHitType::Charged)
-            .Build();
-
-        OnGunHit.Broadcast(Result);
-        FHitResultBuilder()
-            .From(Owner->GetController())
-            .FromHit(BounceHit)
-            .WithDamage(Damage)
-            .OfDamageType(EWeaponDamageType::Gun)
-            .OfHitType(EHitType::Charged)
-            .Apply();
-
-        OutBounceOrigin    = BounceHit.ImpactPoint;
-        OutBounceDirection = BounceDirection;
-        return true;
-    }
-
-    OutBounceOrigin    = BounceEnd;
-    OutBounceDirection = BounceDirection;
-    return false;
 }
 
 AActor* UGunWeapon::FindNearestEnemy(const FVector& Origin, AActor* IgnoreActor) const
@@ -173,7 +192,8 @@ AActor* UGunWeapon::FindNearestEnemy(const FVector& Origin, AActor* IgnoreActor)
 
     TArray<FHitResult> Hits;
     FCollisionQueryParams Params;
-    Params.AddIgnoredActor(IgnoreActor);
+    Params.AddIgnoredActor(Owner);
+    if (IgnoreActor) Params.AddIgnoredActor(IgnoreActor);
 
     Owner->GetWorld()->SweepMultiByChannel(
         Hits, Origin, Origin,
@@ -188,7 +208,7 @@ AActor* UGunWeapon::FindNearestEnemy(const FVector& Origin, AActor* IgnoreActor)
     for (const FHitResult& Hit : Hits)
     {
         AActor* Actor = Hit.GetActor();
-        if (!Actor || Actor == IgnoreActor) continue;
+        if (!Actor) continue;
         if (!Actor->Implements<UDamageable>()) continue;
 
         const float Dist = FVector::Dist(Origin, Actor->GetActorLocation());
@@ -209,45 +229,21 @@ void UGunWeapon::SpawnTrailEffect(const FVector& Start, const FVector& End)
     ACharacter* Owner = GetOwnerSafe();
     if (!Owner || !Owner->GetWorld()) return;
 
-    UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-        Owner->GetWorld(), BulletTrailFX, Start,
-        (End - Start).Rotation());
-}
+    UNiagaraComponent* NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+        Owner->GetWorld(),
+        BulletTrailFX,
+        Start,
+        FRotator::ZeroRotator,
+        FVector(1.f),
+        true,
+        true,
+        ENCPoolMethod::None
+    );
 
-void UGunWeapon::FireHitscan(float Damage, EHitType HitType)
-{
-    ACharacter* Owner = GetOwnerSafe();
-    UCameraComponent* Cam = GetCameraSafe();
-    if (!Owner || !Cam || !Owner->GetWorld()) return;
+    if (!NiagaraComp) return;
 
-    const FVector Start = Cam->GetComponentLocation();
-    const FVector End   = Start + Cam->GetForwardVector() * FireRange;
-
-    FHitResult EngineHit;
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(Owner);
-
-    const bool bHit = Owner->GetWorld()->LineTraceSingleByChannel(
-        EngineHit, Start, End, ECC_Visibility, Params);
-
-    if (!bHit || !EngineHit.GetActor()) return;
-
-    const FWeaponHitResult Result = FHitResultBuilder()
-        .From(Owner->GetController())
-        .FromHit(EngineHit)
-        .WithDamage(Damage)
-        .OfDamageType(EWeaponDamageType::Gun)
-        .OfHitType(HitType)
-        .Build();
-
-    OnGunHit.Broadcast(Result);
-    FHitResultBuilder()
-        .From(Owner->GetController())
-        .FromHit(EngineHit)
-        .WithDamage(Damage)
-        .OfDamageType(EWeaponDamageType::Gun)
-        .OfHitType(HitType)
-        .Apply();
+    NiagaraComp->SetVectorParameter(TEXT("BeamStart"), Start);
+    NiagaraComp->SetVectorParameter(TEXT("BeamEnd"),   End);
 }
 
 void UGunWeapon::ApplyCooldownAfterShot(float FireLockoutSeconds)

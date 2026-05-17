@@ -54,23 +54,23 @@ private:
     UFUNCTION()
     void OnWeaponChanged(const FWeaponChangedEvent& Event);
 
-    UPROPERTY(VisibleAnywhere, Category = "Camera")       TObjectPtr<UCameraComponent>             Camera;
-    UPROPERTY(VisibleAnywhere, Category = "Mesh")         TObjectPtr<USkeletalMeshComponent>       ArmsMesh;
-    UPROPERTY(VisibleAnywhere, Category = "Input")        TObjectPtr<UPlayerInputRouter>           InputRouter;
+    UPROPERTY(VisibleAnywhere, Category = "Camera")       TObjectPtr<UCameraComponent>          Camera;
+    UPROPERTY(VisibleAnywhere, Category = "Mesh")         TObjectPtr<USkeletalMeshComponent>    ArmsMesh;
+    UPROPERTY(VisibleAnywhere, Category = "Input")        TObjectPtr<UPlayerInputRouter>        InputRouter;
 
-    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UAbilityRegistry>             AbilityRegistry;
-    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UJumpAbility>                 JumpAbility;
-    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UDashAbility>                 DashAbility;
-    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<USlamAbility>                 SlamAbility;
-    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UWallJumpAbility>             WallJumpAbility;
-    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<USlideAbility>                SlideAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UAbilityRegistry>          AbilityRegistry;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UJumpAbility>              JumpAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UDashAbility>              DashAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<USlamAbility>              SlamAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<UWallJumpAbility>          WallJumpAbility;
+    UPROPERTY(VisibleAnywhere, Category = "Movement")     TObjectPtr<USlideAbility>             SlideAbility;
 
-    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<UWeaponRegistry>              WeaponRegistry;
-    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<UGunWeapon>                   GunWeapon;
-    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<USwordWeapon>                 SwordWeapon;
-    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<UGunSkill>                    GunSkill;
-    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<USwordSkill>                  SwordSkill;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<UWeaponRegistry>           WeaponRegistry;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<UGunWeapon>                GunWeapon;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<USwordWeapon>              SwordWeapon;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<UGunSkill>                 GunSkill;
+    UPROPERTY(VisibleAnywhere, Category = "Weapon")       TObjectPtr<USwordSkill>               SwordSkill;
 
-    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UAnimationPlayerComponent>    AnimationPlayer;
-    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UCameraEffectsComponent>      CameraEffects;
+    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UAnimationPlayerComponent> AnimationPlayer;
+    UPROPERTY(VisibleAnywhere, Category = "Presentation") TObjectPtr<UCameraEffectsComponent>   CameraEffects;
 };

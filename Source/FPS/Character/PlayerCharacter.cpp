@@ -40,20 +40,20 @@ APlayerCharacter::APlayerCharacter()
     ArmsMesh->bCastDynamicShadow = false;
     ArmsMesh->CastShadow         = false;
 
-    InputRouter     = CreateDefaultSubobject<UPlayerInputRouter>(TEXT("InputRouter"));
+    InputRouter     = CreateDefaultSubobject<UPlayerInputRouter>    (TEXT("InputRouter"));
 
-    AbilityRegistry = CreateDefaultSubobject<UAbilityRegistry> (TEXT("AbilityRegistry"));
-    JumpAbility     = CreateDefaultSubobject<UJumpAbility>     (TEXT("JumpAbility"));
-    DashAbility     = CreateDefaultSubobject<UDashAbility>     (TEXT("DashAbility"));
-    SlamAbility     = CreateDefaultSubobject<USlamAbility>     (TEXT("SlamAbility"));
-    WallJumpAbility = CreateDefaultSubobject<UWallJumpAbility> (TEXT("WallJumpAbility"));
-    SlideAbility    = CreateDefaultSubobject<USlideAbility>    (TEXT("SlideAbility"));
+    AbilityRegistry = CreateDefaultSubobject<UAbilityRegistry>      (TEXT("AbilityRegistry"));
+    JumpAbility     = CreateDefaultSubobject<UJumpAbility>          (TEXT("JumpAbility"));
+    DashAbility     = CreateDefaultSubobject<UDashAbility>          (TEXT("DashAbility"));
+    SlamAbility     = CreateDefaultSubobject<USlamAbility>          (TEXT("SlamAbility"));
+    WallJumpAbility = CreateDefaultSubobject<UWallJumpAbility>      (TEXT("WallJumpAbility"));
+    SlideAbility    = CreateDefaultSubobject<USlideAbility>         (TEXT("SlideAbility"));
 
-    WeaponRegistry  = CreateDefaultSubobject<UWeaponRegistry>  (TEXT("WeaponRegistry"));
-    GunWeapon       = CreateDefaultSubobject<UGunWeapon>       (TEXT("GunWeapon"));
-    SwordWeapon     = CreateDefaultSubobject<USwordWeapon>     (TEXT("SwordWeapon"));
-    GunSkill        = CreateDefaultSubobject<UGunSkill>        (TEXT("GunSkill"));
-    SwordSkill      = CreateDefaultSubobject<USwordSkill>      (TEXT("SwordSkill"));
+    WeaponRegistry  = CreateDefaultSubobject<UWeaponRegistry>       (TEXT("WeaponRegistry"));
+    GunWeapon       = CreateDefaultSubobject<UGunWeapon>            (TEXT("GunWeapon"));
+    SwordWeapon     = CreateDefaultSubobject<USwordWeapon>          (TEXT("SwordWeapon"));
+    GunSkill        = CreateDefaultSubobject<UGunSkill>             (TEXT("GunSkill"));
+    SwordSkill      = CreateDefaultSubobject<USwordSkill>           (TEXT("SwordSkill"));
 
     AnimationPlayer = CreateDefaultSubobject<UAnimationPlayerComponent>(TEXT("AnimationPlayer"));
     CameraEffects   = CreateDefaultSubobject<UCameraEffectsComponent>  (TEXT("CameraEffects"));
@@ -74,9 +74,7 @@ void APlayerCharacter::PostInitializeComponents()
     }
 
     if (WeaponRegistry)
-    {
         WeaponRegistry->OnWeaponChanged.AddDynamic(this, &APlayerCharacter::OnWeaponChanged);
-    }
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -102,9 +100,9 @@ void APlayerCharacter::TickLocomotion(float DeltaTime)
     UCharacterMovementComponent* MoveComp = GetCharacterMovement();
     if (!MoveComp) return;
 
-    const float Speed    = GetVelocity().Size2D();
-    const bool  bInAir   = MoveComp->IsFalling();
-    const int32 WeaponType = AnimationPlayer ? AnimationPlayer->GetCurrentWeaponType() : 0;
+    const float Speed      = GetVelocity().Size2D();
+    const bool  bInAir     = MoveComp->IsFalling();
+    const int32 WeaponType = AnimationPlayer->GetCurrentWeaponType();
 
     AnimationPlayer->SetLocomotionState(Speed, bInAir, WeaponType);
 }
