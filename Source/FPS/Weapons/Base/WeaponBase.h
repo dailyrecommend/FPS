@@ -41,8 +41,9 @@ protected:
     bool IsCooldownReady() const;
     void StartCooldown();
     void StartCooldownUntil(float WorldTimeSeconds);
-
+    
     void PlayMontage(UAnimMontage* Montage, float PlayRate = 1.f);
+    void PlayMontageSection(UAnimMontage* Montage, FName SectionName, float PlayRate = 1.f);
     void StopMontage(UAnimMontage* Montage, float BlendOutTime = 0.1f);
 
     ACharacter*       GetOwnerSafe()  const;

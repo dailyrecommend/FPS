@@ -24,7 +24,8 @@ public:
 
 	void SetLocomotionState(float Speed, bool bInAir, int32 WeaponType);
 	void SetWeaponType(int32 WeaponType);
-
+	USkeletalMeshComponent* GetMesh() const { return Mesh.Get(); }
+	
 	int32 GetCurrentWeaponType() const { return CurrentWeaponType; }
 
 private:

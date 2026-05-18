@@ -53,6 +53,14 @@ void UWeaponBase::PlayMontage(UAnimMontage* Montage, float PlayRate)
 	IAnimationPlayer::Execute_PlayMontage(Player, Montage, PlayRate);
 }
 
+void UWeaponBase::PlayMontageSection(UAnimMontage* Montage, FName SectionName, float PlayRate)
+{
+	if (!Montage) return;
+	UObject* Player = AnimationPlayer.GetObject();
+	if (!Player) return;
+	IAnimationPlayer::Execute_PlayMontageSection(Player, Montage, SectionName, PlayRate);
+}
+
 void UWeaponBase::StopMontage(UAnimMontage* Montage, float BlendOutTime)
 {
 	if (!Montage) return;
