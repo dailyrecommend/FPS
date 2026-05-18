@@ -40,6 +40,19 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Gun") float FireDamage       = 50.f;
     UPROPERTY(EditDefaultsOnly, Category = "Gun") float AutoTargetRadius = 800.f;
 
+
+    virtual void EndPlay(EEndPlayReason::Type Reason) override;
+    
+    void ExecuteRicochetChain(int32 BounceIndex, int32 TotalBounces,
+                                  FVector Origin, FVector Direction,
+                                  float Damage, AActor* LastHitActor);
+
+    UPROPERTY(EditDefaultsOnly, Category = "Gun")
+    float RicochetInterval = 0.05f;
+
+    TArray<FTimerHandle> RicochetTimers;
+
+    
     UPROPERTY(EditDefaultsOnly, Category = "Gun|FX")
     FName MuzzlePointName = TEXT("MuzzlePoint");
 

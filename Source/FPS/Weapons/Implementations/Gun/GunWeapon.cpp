@@ -37,16 +37,15 @@ void UGunWeapon::FireHitscan(float Damage, EHitType HitType)
     const FVector Start = Cam->GetComponentLocation();
     const FVector End   = Start + Cam->GetForwardVector() * FireRange;
 
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(Owner);
-
-    // 총구 트레일 시작점
     FVector TrailStart = Start;
     if (USceneComponent* Muzzle = Cast<USceneComponent>(
         Owner->GetDefaultSubobjectByName(MuzzlePointName)))
         TrailStart = Muzzle->GetComponentLocation();
 
     FHitResult Hit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(Owner);
+
     const bool bHit = Owner->GetWorld()->LineTraceSingleByChannel(
         Hit, Start, End, ECC_Visibility, Params);
 
@@ -58,7 +57,6 @@ void UGunWeapon::FireHitscan(float Damage, EHitType HitType)
 
     SpawnTrailEffect(TrailStart, Hit.ImpactPoint);
 
-    // IDamageable인 경우에만 데미지
     if (!Hit.GetActor() || !Hit.GetActor()->Implements<UDamageable>()) return;
 
     const FWeaponHitResult Result = FHitResultBuilder()
@@ -95,20 +93,23 @@ void UGunWeapon::FireRicochetShot(float Damage, int32 RicochetCount, float FireL
     UCameraComponent* Cam = GetCameraSafe();
     if (!Owner || !Cam || !Owner->GetWorld()) return;
 
-    // 총구 트레일 시작점
+    for (FTimerHandle& Handle : RicochetTimers)
+        Owner->GetWorldTimerManager().ClearTimer(Handle);
+    RicochetTimers.Empty();
+
     FVector TrailStart = Cam->GetComponentLocation();
     if (USceneComponent* Muzzle = Cast<USceneComponent>(
         Owner->GetDefaultSubobjectByName(MuzzlePointName)))
         TrailStart = Muzzle->GetComponentLocation();
 
-    FVector RayStart     = Cam->GetComponentLocation();
-    FVector RayDir       = Cam->GetForwardVector();
-    AActor* LastHitActor = nullptr;
-    int32   BounceCount  = 0;
+    FVector RayStart = Cam->GetComponentLocation();
+    FVector RayDir   = Cam->GetForwardVector();
+    AActor* LastHit  = nullptr;
 
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(Owner);
 
+    // 적을 관통하며 직진, 벽을 만나면 도탄 시작
     while (true)
     {
         const FVector RayEnd = RayStart + RayDir * FireRange;
@@ -119,28 +120,27 @@ void UGunWeapon::FireRicochetShot(float Damage, int32 RicochetCount, float FireL
 
         if (!bHit)
         {
-            // 아무것도 없음 — 트레일 그리고 종료
             SpawnTrailEffect(TrailStart, RayEnd);
             break;
         }
 
-        AActor* HitActor  = Hit.GetActor();
+        AActor* HitActor    = Hit.GetActor();
         const bool bIsEnemy = HitActor && HitActor->Implements<UDamageable>();
 
         if (bIsEnemy)
         {
-            // 적 맞음 — 데미지 + 관통 후 직진 계속
+            // 적 — 데미지 + 관통 (도탄 횟수 차감 없음, 타이머 없음)
             SpawnTrailEffect(TrailStart, Hit.ImpactPoint);
+            TrailStart = Hit.ImpactPoint;
 
-            const FWeaponHitResult Result = FHitResultBuilder()
+            OnGunHit.Broadcast(FHitResultBuilder()
                 .From(Owner->GetController())
                 .FromHit(Hit)
                 .WithDamage(Damage)
                 .OfDamageType(EWeaponDamageType::Gun)
                 .OfHitType(EHitType::Charged)
-                .Build();
+                .Build());
 
-            OnGunHit.Broadcast(Result);
             FHitResultBuilder()
                 .From(Owner->GetController())
                 .FromHit(Hit)
@@ -149,40 +149,126 @@ void UGunWeapon::FireRicochetShot(float Damage, int32 RicochetCount, float FireL
                 .OfHitType(EHitType::Charged)
                 .Apply();
 
-            // 관통 — 맞은 적 무시하고 계속 직진
-            TrailStart   = Hit.ImpactPoint;
-            RayStart     = Hit.ImpactPoint + RayDir * 5.f;
-            LastHitActor = HitActor;
+            // 맞은 적 무시하고 같은 방향 직진
+            LastHit  = HitActor;
+            RayStart = Hit.ImpactPoint + RayDir * 5.f;
             Params.AddIgnoredActor(HitActor);
         }
         else
         {
-            // 벽/사물 맞음 — 도탄 처리
+            // 벽 — 트레일 그리고 도탄 체인 시작 (타이머)
             SpawnTrailEffect(TrailStart, Hit.ImpactPoint);
 
-            if (BounceCount >= RicochetCount) break;
-
-            BounceCount++;
-
-            // 근처 적 자동 타겟 확인
-            AActor* NearestEnemy = FindNearestEnemy(Hit.ImpactPoint, LastHitActor);
-
-            if (NearestEnemy)
+            if (RicochetCount > 0)
             {
-                RayDir = (NearestEnemy->GetActorLocation() - Hit.ImpactPoint).GetSafeNormal();
-            }
-            else
-            {
-                RayDir = FMath::GetReflectionVector(RayDir, Hit.Normal);
-            }
+                FVector NextDir;
+                AActor* NearestEnemy = FindNearestEnemy(Hit.ImpactPoint, LastHit);
+                if (NearestEnemy)
+                    NextDir = (NearestEnemy->GetActorLocation() - Hit.ImpactPoint).GetSafeNormal();
+                else
+                    NextDir = FMath::GetReflectionVector(RayDir, Hit.Normal);
 
-            TrailStart = Hit.ImpactPoint;
-            RayStart   = Hit.ImpactPoint + Hit.Normal * 2.f;
+                const FVector NextOrigin = Hit.ImpactPoint + Hit.Normal * 2.f;
+                ExecuteRicochetChain(0, RicochetCount, NextOrigin, NextDir, Damage, LastHit);
+            }
+            break;
         }
     }
 
     OnGunFired.Broadcast();
     ApplyCooldownAfterShot(FireLockoutSeconds);
+}
+
+void UGunWeapon::ExecuteRicochetChain(int32 BounceIndex, int32 TotalBounces,
+                                      FVector Origin, FVector Direction,
+                                      float Damage, AActor* LastHitActor)
+{
+    ACharacter* Owner = GetOwnerSafe();
+    if (!Owner || !Owner->GetWorld()) return;
+
+    if (BounceIndex >= TotalBounces) return;
+
+    FTimerHandle Handle;
+    Owner->GetWorldTimerManager().SetTimer(Handle, [=, this]()
+    {
+        ACharacter* O = GetOwnerSafe();
+        if (!O || !O->GetWorld()) return;
+
+        FCollisionQueryParams Params;
+        Params.AddIgnoredActor(O);
+
+        FVector RayStart    = Origin;
+        FVector RayDir      = Direction;
+        FVector TrailStart  = Origin;
+        AActor* CurrentLast = LastHitActor;
+
+        if (CurrentLast) Params.AddIgnoredActor(CurrentLast);
+
+        // 도탄 후에도 적을 관통하며 직진, 다음 벽에서 도탄
+        while (true)
+        {
+            const FVector RayEnd = RayStart + RayDir * FireRange;
+
+            FHitResult Hit;
+            const bool bHit = O->GetWorld()->LineTraceSingleByChannel(
+                Hit, RayStart, RayEnd, ECC_Visibility, Params);
+
+            if (!bHit)
+            {
+                SpawnTrailEffect(TrailStart, RayEnd);
+                break;
+            }
+
+            AActor* HitActor    = Hit.GetActor();
+            const bool bIsEnemy = HitActor && HitActor->Implements<UDamageable>();
+
+            if (bIsEnemy)
+            {
+                // 적 — 데미지 + 관통 (도탄 횟수 차감 없음)
+                SpawnTrailEffect(TrailStart, Hit.ImpactPoint);
+                TrailStart = Hit.ImpactPoint;
+
+                OnGunHit.Broadcast(FHitResultBuilder()
+                    .From(O->GetController())
+                    .FromHit(Hit)
+                    .WithDamage(Damage)
+                    .OfDamageType(EWeaponDamageType::Gun)
+                    .OfHitType(EHitType::Charged)
+                    .Build());
+
+                FHitResultBuilder()
+                    .From(O->GetController())
+                    .FromHit(Hit)
+                    .WithDamage(Damage)
+                    .OfDamageType(EWeaponDamageType::Gun)
+                    .OfHitType(EHitType::Charged)
+                    .Apply();
+
+                CurrentLast = HitActor;
+                RayStart    = Hit.ImpactPoint + RayDir * 5.f;
+                Params.AddIgnoredActor(HitActor);
+            }
+            else
+            {
+                // 벽 — 도탄 횟수 1 차감 후 다음 도탄
+                SpawnTrailEffect(TrailStart, Hit.ImpactPoint);
+
+                FVector NextDir;
+                AActor* NearestEnemy = FindNearestEnemy(Hit.ImpactPoint, CurrentLast);
+                if (NearestEnemy)
+                    NextDir = (NearestEnemy->GetActorLocation() - Hit.ImpactPoint).GetSafeNormal();
+                else
+                    NextDir = FMath::GetReflectionVector(RayDir, Hit.Normal);
+
+                const FVector NextOrigin = Hit.ImpactPoint + Hit.Normal * 2.f;
+                ExecuteRicochetChain(BounceIndex + 1, TotalBounces, NextOrigin, NextDir, Damage, CurrentLast);
+                break;
+            }
+        }
+
+    }, RicochetInterval, false);
+
+    RicochetTimers.Add(Handle);
 }
 
 AActor* UGunWeapon::FindNearestEnemy(const FVector& Origin, AActor* IgnoreActor) const
@@ -255,4 +341,17 @@ void UGunWeapon::ApplyCooldownAfterShot(float FireLockoutSeconds)
         StartCooldownUntil(Owner->GetWorld()->GetTimeSeconds() + FireLockoutSeconds);
     else
         StartCooldown();
+}
+
+void UGunWeapon::EndPlay(EEndPlayReason::Type Reason)
+{
+    ACharacter* Owner = GetOwnerSafe();
+    if (Owner && Owner->GetWorld())
+    {
+        for (FTimerHandle& Handle : RicochetTimers)
+            Owner->GetWorldTimerManager().ClearTimer(Handle);
+    }
+    RicochetTimers.Empty();
+
+    Super::EndPlay(Reason);
 }
