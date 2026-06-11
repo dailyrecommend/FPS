@@ -44,4 +44,10 @@ public:
 	/** Update the live value of an existing handle (for continuously-changing effects like Glissando roll). */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Presentation")
 	bool UpdateRollOffset(int32 Handle, float NewRollDegrees);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Presentation")
+	void TriggerShake(float Magnitude, float Duration, float Frequency);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Presentation")
+	void TriggerKickback(float PitchAmount, float YawAmount, float Duration);
 };

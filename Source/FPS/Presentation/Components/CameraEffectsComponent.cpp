@@ -167,4 +167,107 @@ void UCameraEffectsComponent::TickComponent(float DeltaTime, ELevelTick TickType
     TickFOV(DeltaTime);
     TickRoll(DeltaTime);
     TickHeight(DeltaTime);
+    TickShake(DeltaTime);
+    TickKickback(DeltaTime);
+}
+
+void UCameraEffectsComponent::TriggerShake_Implementation(
+    float Magnitude, float Duration, float Frequency)
+{
+    ShakeMagnitude = Magnitude;
+    ShakeDuration  = Duration;
+    ShakeFrequency = Frequency;
+    ShakeElapsed   = 0.f;
+    ShakeTimer     = 0.f;
+}
+
+void UCameraEffectsComponent::TickShake(float DeltaTime)
+{
+    if (ShakeDuration <= 0.f || ShakeElapsed >= ShakeDuration)
+    {
+        if (LastShakePitch != 0.f || LastShakeYaw != 0.f)
+        {
+            APlayerController* PC = ResolveController();
+            if (PC)
+            {
+                FRotator ControlRot = PC->GetControlRotation();
+                ControlRot.Pitch   -= LastShakePitch;
+                ControlRot.Yaw     -= LastShakeYaw;
+                PC->SetControlRotation(ControlRot);
+            }
+            LastShakePitch = 0.f;
+            LastShakeYaw   = 0.f;
+        }
+        return;
+    }
+
+    ShakeElapsed += DeltaTime;
+
+    APlayerController* PC = ResolveController();
+    if (!PC) return;
+
+    const float Decay    = 1.f - FMath::Clamp(ShakeElapsed / ShakeDuration, 0.f, 1.f);
+    const float NewPitch = FMath::RandRange(-ShakeMagnitude, ShakeMagnitude) * Decay;
+    const float NewYaw   = FMath::RandRange(-ShakeMagnitude, ShakeMagnitude) * Decay * 0.5f;
+
+    FRotator ControlRot = PC->GetControlRotation();
+    ControlRot.Pitch   -= LastShakePitch;
+    ControlRot.Pitch   += NewPitch;
+    ControlRot.Yaw     -= LastShakeYaw;
+    ControlRot.Yaw     += NewYaw;
+    PC->SetControlRotation(ControlRot);
+
+    LastShakePitch = NewPitch;
+    LastShakeYaw   = NewYaw;
+}
+
+void UCameraEffectsComponent::TriggerKickback_Implementation(
+    float PitchAmount, float YawAmount, float Duration)
+{
+    KickbackPitch    = PitchAmount;
+    KickbackYaw      = YawAmount;
+    KickbackDuration = Duration;
+    KickbackElapsed  = 0.f;
+    LastKickPitch    = 0.f;
+    LastKickYaw      = 0.f;
+}
+
+void UCameraEffectsComponent::TickKickback(float DeltaTime)
+{
+    if (KickbackDuration <= 0.f || KickbackElapsed >= KickbackDuration)
+    {
+        if (LastKickPitch != 0.f || LastKickYaw != 0.f)
+        {
+            APlayerController* PC = ResolveController();
+            if (PC)
+            {
+                FRotator ControlRot = PC->GetControlRotation();
+                ControlRot.Pitch   -= LastKickPitch;
+                ControlRot.Yaw     -= LastKickYaw;
+                PC->SetControlRotation(ControlRot);
+            }
+            LastKickPitch = 0.f;
+            LastKickYaw   = 0.f;
+        }
+        return;
+    }
+
+    KickbackElapsed += DeltaTime;
+
+    APlayerController* PC = ResolveController();
+    if (!PC) return;
+
+    const float Decay        = 1.f - FMath::Clamp(KickbackElapsed / KickbackDuration, 0.f, 1.f);
+    const float TargetPitch  = KickbackPitch * Decay;
+    const float TargetYaw    = KickbackYaw   * Decay;
+
+    FRotator ControlRot = PC->GetControlRotation();
+    ControlRot.Pitch   -= LastKickPitch;
+    ControlRot.Pitch   += TargetPitch;
+    ControlRot.Yaw     -= LastKickYaw;
+    ControlRot.Yaw     += TargetYaw;
+    PC->SetControlRotation(ControlRot);
+
+    LastKickPitch = TargetPitch;
+    LastKickYaw   = TargetYaw;
 }

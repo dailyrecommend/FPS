@@ -36,6 +36,9 @@ public:
 
     virtual bool  UpdateRollOffset_Implementation(int32 Handle, float NewRollDegrees) override;
 
+    virtual void TriggerShake_Implementation(float Magnitude, float Duration, float Frequency) override;
+    virtual void TriggerKickback_Implementation(float PitchAmount, float YawAmount, float Duration) override;
+    
 protected:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
@@ -53,6 +56,8 @@ private:
     void TickFOV(float DeltaTime);
     void TickRoll(float DeltaTime);
     void TickHeight(float DeltaTime);
+    void TickShake(float DeltaTime);
+    void TickKickback(float DeltaTime);
 
     UPROPERTY()
     TWeakObjectPtr<UCameraComponent> Camera;
@@ -69,4 +74,20 @@ private:
     float CurrentFOVOffset    = 0.f;
     float CurrentRollOffset   = 0.f;
     float CurrentHeightOffset = 0.f;
+
+    float ShakeMagnitude  = 0.f;
+    float ShakeDuration   = 0.f;
+    float ShakeFrequency  = 0.f;
+    float ShakeElapsed    = 0.f;
+    float ShakeTimer      = 0.f;
+
+    float LastShakePitch = 0.f;
+    float LastShakeYaw   = 0.f;
+
+    float KickbackPitch    = 0.f;
+    float KickbackYaw      = 0.f;
+    float KickbackDuration = 0.f;
+    float KickbackElapsed  = 0.f;
+    float LastKickPitch    = 0.f;
+    float LastKickYaw      = 0.f;
 };

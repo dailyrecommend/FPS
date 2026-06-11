@@ -66,10 +66,10 @@ private:
     void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
     UPROPERTY(EditDefaultsOnly, Category = "Sword|Combo")
-    TArray<float> ComboDamages = { 80.f, 90.f, 120.f };
+    TArray<float> ComboDamages = { 80.f, 90.f};
 
     UPROPERTY(EditDefaultsOnly, Category = "Sword|Combo")
-    TArray<float> ComboHitboxDurations = { 0.2f, 0.2f, 0.25f };
+    TArray<float> ComboHitboxDurations = { 0.2f, 0.2f};
 
     UPROPERTY(EditDefaultsOnly, Category = "Sword|Combo")
     float InputWindowDuration = 0.5f;
@@ -81,7 +81,7 @@ private:
     TObjectPtr<UAnimMontage> SwordMontage;
 
     UPROPERTY(EditDefaultsOnly, Category = "Sword|Anim")
-    TArray<FName> ComboSections = { TEXT("Slash1"), TEXT("Slash2"), TEXT("Slash3") };
+    TArray<FName> ComboSections = { TEXT("Slash1"), TEXT("Slash2")};
 
     UPROPERTY(EditDefaultsOnly, Category = "Sword|Anim")
     float ReturnPoseDelay = 0.1f;

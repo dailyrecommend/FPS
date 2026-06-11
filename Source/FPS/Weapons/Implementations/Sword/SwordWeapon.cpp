@@ -144,6 +144,12 @@ void USwordWeapon::PerformAttack()
 
     OnSlash.Broadcast(LastDirection);
     OnComboChanged.Broadcast(ComboStep);
+    TriggerCameraShake(.5f, 0.08f, .0f);
+
+    // 1타(LeftToRight): 우상→좌하 → 피치 위, 요 왼쪽
+    // 2타(RightToLeft): 좌상→우하 → 피치 위, 요 오른쪽
+    const float KickYaw = (LastDirection == ESlashDirection::LeftToRight) ? -1.5f : 1.5f;
+    TriggerCameraKickback(-1.5f, KickYaw, 0.12f);
 }
 
 void USwordWeapon::PlayComboMontage()

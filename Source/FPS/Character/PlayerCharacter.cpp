@@ -57,6 +57,7 @@ APlayerCharacter::APlayerCharacter()
 
     AnimationPlayer = CreateDefaultSubobject<UAnimationPlayerComponent>(TEXT("AnimationPlayer"));
     CameraEffects   = CreateDefaultSubobject<UCameraEffectsComponent>  (TEXT("CameraEffects"));
+    
 }
 
 void APlayerCharacter::PostInitializeComponents()
@@ -191,12 +192,15 @@ void APlayerCharacter::InjectAndRegisterWeapons()
     {
         GunWeapon->InjectDependencies(this, Camera);
         GunWeapon->AttachAnimationPlayer(AnimationPlayer);
+        GunWeapon->AttachCameraEffects(CameraEffects);
     }
 
     if (SwordWeapon)
     {
         SwordWeapon->InjectDependencies(this, Camera);
         SwordWeapon->AttachAnimationPlayer(AnimationPlayer);
+        SwordWeapon->AttachCameraEffects(CameraEffects);
+
         SwordWeapon->SetupHitbox();
     }
 
