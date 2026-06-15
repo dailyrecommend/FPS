@@ -49,6 +49,7 @@ protected:
     void StopMontage(UAnimMontage* Montage, float BlendOutTime = 0.1f);
     void TriggerCameraShake(float Magnitude = 1.f, float Duration = 0.1f, float Frequency = 10.f);
     void TriggerCameraKickback(float PitchAmount, float YawAmount, float Duration = 0.15f);
+    void TriggerCameraPositionKickback(float BackAmount, float Duration = 0.15f);
 
     ACharacter*       GetOwnerSafe()  const;
     UCameraComponent* GetCameraSafe() const;

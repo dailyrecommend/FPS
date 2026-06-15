@@ -19,7 +19,7 @@ void UDashAbility::BeginPlay()
 
 bool UDashAbility::CheckPreconditions(const FAbilityContext& /*Context*/) const
 {
-    return DashCharges > 0 && !bIsActive;
+    return DashCharges > 0 && !bIsActive && !bDashOnCooldown;
 }
 
 EActivationResult UDashAbility::OnTryActivate(const FAbilityContext& Context)
@@ -48,10 +48,13 @@ EActivationResult UDashAbility::OnTryActivate(const FAbilityContext& Context)
 
     MoveComp->Velocity = DashDirection * DashSpeed;
 
-    DashElapsed      = 0.f;
-    bDashChargeDelay = true;
-    DashDelayTimer   = 0.f;
-    DashCharges      = FMath::Max(0, DashCharges - 1);
+    DashElapsed       = 0.f;
+    bDashChargeDelay  = true;
+    DashDelayTimer    = 0.f;
+    bDashOnCooldown   = true;
+    DashCooldownTimer = 0.f;
+    DashCharges = FMath::Max(0, DashCharges - 1);
+    OnDashChargesChanged.Broadcast(DashCharges, MaxDashCharges);
 
     PlayMontage(DashMontage);
     return EActivationResult::Success;
@@ -71,6 +74,7 @@ void UDashAbility::TickComponent(float DeltaTime, ELevelTick TickType,
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
     TickDash(DeltaTime);
+    TickCooldown(DeltaTime);
     TickChargeRecovery(DeltaTime);
 }
 
@@ -92,11 +96,17 @@ void UDashAbility::TickDash(float DeltaTime)
         Deactivate_Implementation();
 }
 
+void UDashAbility::TickCooldown(float DeltaTime)
+{
+    if (!bDashOnCooldown) return;
+
+    DashCooldownTimer += DeltaTime;
+    if (DashCooldownTimer >= DashCooldown)
+        bDashOnCooldown = false;
+}
+
 void UDashAbility::TickChargeRecovery(float DeltaTime)
 {
-    UCharacterMovementComponent* MoveComp = GetMoveComp();
-    if (!MoveComp) return;
-
     if (bDashChargeDelay)
     {
         DashDelayTimer += DeltaTime;
@@ -108,7 +118,7 @@ void UDashAbility::TickChargeRecovery(float DeltaTime)
         return;
     }
 
-    if (DashCharges < MaxDashCharges && MoveComp->IsMovingOnGround())
+    if (DashCharges < MaxDashCharges)
     {
         DashChargeTimer += DeltaTime;
         if (DashChargeTimer >= DashChargeInterval)
@@ -122,6 +132,7 @@ void UDashAbility::TickChargeRecovery(float DeltaTime)
 void UDashAbility::AddDashCharge()
 {
     DashCharges = FMath::Min(DashCharges + 1, MaxDashCharges);
+    OnDashChargesChanged.Broadcast(DashCharges, MaxDashCharges);
 }
 
 void UDashAbility::AddDashChargeImmediate()

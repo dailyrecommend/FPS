@@ -16,6 +16,7 @@ void UGunSkill::OnEndHold()
     ResetGunRotation();
 
     PlayMontageSection(GunSkillMontage, TEXT("Fire"));
+    TriggerCameraKickback(KickbackPitchAmount, 0.f, KickbackDuration);
 
     if (UGunWeapon* G = Gun.Get())
         G->FireRicochetShot(ChargedDamage, CurrentRicochetCount, FireLockout);

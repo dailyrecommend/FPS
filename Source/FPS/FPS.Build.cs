@@ -10,7 +10,7 @@ public class FPS : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(new string[] {
 			"Core", "CoreUObject", "Engine", "InputCore",
-			"EnhancedInput",
+			"EnhancedInput", "UMG", "Slate", "SlateCore",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "Niagara" });

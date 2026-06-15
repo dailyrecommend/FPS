@@ -16,6 +16,8 @@
 
 #include "Presentation/Components/AnimationPlayerComponent.h"
 #include "Presentation/Components/CameraEffectsComponent.h"
+#include "Character/Components/HealthComponent.h"
+#include "UI/PlayerHUDWidget.h"
 
 #include "Input/PlayerCharacterInputConfig.h"
 #include "Camera/CameraComponent.h"
@@ -57,7 +59,20 @@ APlayerCharacter::APlayerCharacter()
 
     AnimationPlayer = CreateDefaultSubobject<UAnimationPlayerComponent>(TEXT("AnimationPlayer"));
     CameraEffects   = CreateDefaultSubobject<UCameraEffectsComponent>  (TEXT("CameraEffects"));
-    
+    Health          = CreateDefaultSubobject<UHealthComponent>          (TEXT("Health"));
+
+}
+
+void APlayerCharacter::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (HUDWidgetClass)
+    {
+        HUDWidget = CreateWidget<UPlayerHUDWidget>(GetWorld(), HUDWidgetClass);
+        if (HUDWidget)
+            HUDWidget->AddToViewport();
+    }
 }
 
 void APlayerCharacter::PostInitializeComponents()
@@ -106,6 +121,29 @@ void APlayerCharacter::TickLocomotion(float DeltaTime)
     const int32 WeaponType = AnimationPlayer->GetCurrentWeaponType();
 
     AnimationPlayer->SetLocomotionState(Speed, bInAir, WeaponType);
+}
+
+void APlayerCharacter::OnWeaponHit_Implementation(const FWeaponHitResult& Hit)
+{
+    // 패링 윈도우가 열려 있으면 피격 소비
+    if (SwordSkill && IWeaponSkill::Execute_IsSkillActive(SwordSkill))
+    {
+        if (SwordSkill->TryParry(Hit.HitActor))
+            return;
+    }
+
+    if (Health)
+        Health->TakeDamage(Hit.Damage);
+}
+
+bool APlayerCharacter::IsAlive_Implementation() const
+{
+    return Health ? Health->IsAlive() : false;
+}
+
+float APlayerCharacter::GetCurrentHealth_Implementation() const
+{
+    return Health ? Health->GetCurrentHealth() : 0.f;
 }
 
 void APlayerCharacter::OnWeaponChanged(const FWeaponChangedEvent& Event)
@@ -217,6 +255,7 @@ void APlayerCharacter::InjectAndRegisterWeapons()
     {
         SwordSkill->InjectDependencies(this, Camera);
         SwordSkill->AttachAnimationPlayer(AnimationPlayer);
+        SwordSkill->AttachCameraEffects(CameraEffects);
         SwordSkill->AttachSword(SwordWeapon);
         SwordWeapon->AttachSkill(SwordSkill);
     }

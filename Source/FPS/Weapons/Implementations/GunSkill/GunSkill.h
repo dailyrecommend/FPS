@@ -67,6 +67,12 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Anim")
     TObjectPtr<UAnimMontage> GunSkillMontage;
 
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Kickback")
+    float KickbackPitchAmount = -3.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "GunSkill|Kickback")
+    float KickbackDuration = 0.2f;
+
     UPROPERTY()
     TWeakObjectPtr<UGunWeapon> Gun;
 

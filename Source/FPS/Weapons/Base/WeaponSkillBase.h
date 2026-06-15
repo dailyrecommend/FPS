@@ -54,6 +54,8 @@ protected:
 
     int32 PushFOVOffset(float Offset, float InterpSpeed, int32 Priority);
     void  PopFOVOffset(int32 Handle);
+    void  TriggerCameraPositionKickback(float BackAmount, float Duration);
+    void  TriggerCameraKickback(float PitchAmount, float YawAmount, float Duration);
 
     ACharacter*       GetOwnerSafe()  const;
     UCameraComponent* GetCameraSafe() const;

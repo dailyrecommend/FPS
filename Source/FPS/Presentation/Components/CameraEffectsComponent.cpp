@@ -157,7 +157,7 @@ void UCameraEffectsComponent::TickHeight(float DeltaTime)
     const float Speed        = Winner ? Winner->InterpSpeed : 8.f;
 
     CurrentHeightOffset = FMath::FInterpTo(CurrentHeightOffset, TargetOffset, DeltaTime, Speed);
-    Cam->SetRelativeLocation(FVector(0.f, 0.f, BaseEyeHeight + CurrentHeightOffset));
+    Cam->SetRelativeLocation(FVector(-CurrentDepthOffset, 0.f, BaseEyeHeight + CurrentHeightOffset));
 }
 
 void UCameraEffectsComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -169,6 +169,7 @@ void UCameraEffectsComponent::TickComponent(float DeltaTime, ELevelTick TickType
     TickHeight(DeltaTime);
     TickShake(DeltaTime);
     TickKickback(DeltaTime);
+    TickPositionKickback(DeltaTime);
 }
 
 void UCameraEffectsComponent::TriggerShake_Implementation(
@@ -270,4 +271,24 @@ void UCameraEffectsComponent::TickKickback(float DeltaTime)
 
     LastKickPitch = TargetPitch;
     LastKickYaw   = TargetYaw;
+}
+
+void UCameraEffectsComponent::TriggerPositionKickback_Implementation(float BackAmount, float Duration)
+{
+    PosKickbackAmount   = BackAmount;
+    PosKickbackDuration = Duration;
+    PosKickbackElapsed  = 0.f;
+}
+
+void UCameraEffectsComponent::TickPositionKickback(float DeltaTime)
+{
+    if (PosKickbackDuration <= 0.f || PosKickbackElapsed >= PosKickbackDuration)
+    {
+        CurrentDepthOffset = 0.f;
+        return;
+    }
+
+    PosKickbackElapsed += DeltaTime;
+    const float Decay  = 1.f - FMath::Clamp(PosKickbackElapsed / PosKickbackDuration, 0.f, 1.f);
+    CurrentDepthOffset = PosKickbackAmount * Decay;
 }

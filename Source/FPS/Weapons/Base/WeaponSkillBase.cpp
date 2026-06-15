@@ -89,6 +89,20 @@ void UWeaponSkillBase::PopFOVOffset(int32 Handle)
     ICameraEffects::Execute_PopFOVOffset(Effects, Handle);
 }
 
+void UWeaponSkillBase::TriggerCameraPositionKickback(float BackAmount, float Duration)
+{
+    UObject* Effects = CameraEffects.GetObject();
+    if (!Effects) return;
+    ICameraEffects::Execute_TriggerPositionKickback(Effects, BackAmount, Duration);
+}
+
+void UWeaponSkillBase::TriggerCameraKickback(float PitchAmount, float YawAmount, float Duration)
+{
+    UObject* Effects = CameraEffects.GetObject();
+    if (!Effects) return;
+    ICameraEffects::Execute_TriggerKickback(Effects, PitchAmount, YawAmount, Duration);
+}
+
 ACharacter* UWeaponSkillBase::GetOwnerSafe() const
 {
     return OwnerCharacter.Get();

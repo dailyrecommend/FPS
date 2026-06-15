@@ -1,16 +1,12 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Weapons/Base/WeaponSkillBase.h"
-#include "Combat/Data/WeaponHitResult.h"
 #include "SwordSkill.generated.h"
 
 class UAnimMontage;
 class USwordWeapon;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSwordSkillStarted);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSwordSkillEnded);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSwordSkillCancelled);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSwordSkillHit, const FWeaponHitResult&, HitResult);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnParrySuccess);
 
 UCLASS(ClassGroup = Custom, meta = (BlueprintSpawnableComponent))
 class FPS_API USwordSkill : public UWeaponSkillBase
@@ -22,69 +18,84 @@ public:
 
     void AttachSword(USwordWeapon* InSword) { Sword = InSword; }
 
-    UPROPERTY(BlueprintAssignable, Category = "SwordSkill") FOnSwordSkillStarted   OnSwordSkillStarted;
-    UPROPERTY(BlueprintAssignable, Category = "SwordSkill") FOnSwordSkillEnded     OnSwordSkillEnded;
-    UPROPERTY(BlueprintAssignable, Category = "SwordSkill") FOnSwordSkillCancelled OnSwordSkillCancelled;
-    UPROPERTY(BlueprintAssignable, Category = "SwordSkill") FOnSwordSkillHit       OnSwordSkillHit;
+    /**
+     * 플레이어 피격 처리 측에서 호출.
+     * 패링 윈도우가 열려 있고 정면 공격이면 피격을 소비하고 true 반환.
+     */
+    UFUNCTION(BlueprintCallable, Category = "SwordSkill")
+    bool TryParry(AActor* Attacker);
 
-    UFUNCTION(BlueprintPure, Category = "SwordSkill") bool IsHolding() const { return bIsActive && !bIsDashing && !bIsStunned; }
-    UFUNCTION(BlueprintPure, Category = "SwordSkill") bool IsDashing() const { return bIsDashing; }
-    UFUNCTION(BlueprintPure, Category = "SwordSkill") bool IsStunned() const { return bIsStunned; }
+    UFUNCTION(BlueprintPure, Category = "SwordSkill")
+    bool IsParryWindowOpen() const { return bParryWindowOpen; }
 
-    virtual bool IsSkillActive_Implementation()  const override { return bIsActive || bIsDashing || bIsStunned; }
-    virtual bool BlocksMovement_Implementation() const override { return IsSkillActive_Implementation(); }
+    UPROPERTY(BlueprintAssignable, Category = "SwordSkill")
+    FOnParrySuccess OnParrySuccess;
+
+    virtual bool IsSkillActive_Implementation()  const override { return bParryWindowOpen || bHitStopActive; }
+    virtual bool BlocksMovement_Implementation() const override { return bParryWindowOpen || bHitStopActive; }
 
 protected:
-    virtual void EndPlay(EEndPlayReason::Type Reason) override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
+    virtual void EndPlay(EEndPlayReason::Type Reason) override;
 
     virtual bool OnStartHold() override;
     virtual void OnEndHold()   override;
     virtual void OnCancel()    override;
 
+    // 클릭 기반 스킬 — 버튼 릴리즈로 스킬이 종료되지 않음
+    // 종료는 윈도우 만료(Cancel) 또는 패링 성공 후 히트 스탑 종료 시에만 발생
+    virtual void EndHold_Implementation() override {};
+
 private:
-    void PerformDash();
-    FVector CalculateDestination() const;
-    void    HitActorsAlongPath(const FVector& Start, const FVector& End);
+    bool IsAttackerInFront(AActor* Attacker) const;
+    void CloseParryWindow();
+    void StartHitStop();
+    void EndHitStop();
+    void ExecuteCounterAttack();
 
-    void RequestTimeDilation();
-    void ReleaseTimeDilation();
+    void TickParryWindow(float UnscaledDelta);
+    void TickHitStop(float UnscaledDelta);
 
-    void DisablePawnCollision();
-    void RestorePawnCollision();
+    bool  bParryWindowOpen   = false;
+    float ParryWindowElapsed = 0.f;
 
-    void TickHold(float UnscaledDelta);
-    void TickDash(float UnscaledDelta);
-    void TickStun(float UnscaledDelta);
+    bool  bHitStopActive = false;
+    float HitStopElapsed = 0.f;
 
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill") float Damage           = 200.f;
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill") float Distance         = 1500.f;
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill") float CooldownDuration = 6.f;
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill") float DashDuration     = 0.1f;
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill") float StunDuration     = 0.3f;
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill") float HoldMaxDuration  = 3.f;
+    int32 HitStopDilationHandle = 0;
 
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Time") float SlowWorldDilation = 0.15f;
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Time") int32 DilationPriority  = 10;
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Time") float DilationBlendIn   = 0.1f;
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Time") float DilationBlendOut  = 0.2f;
+    UPROPERTY()
+    TWeakObjectPtr<AActor> ParryTarget;
 
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Anim") TObjectPtr<UAnimMontage> HoldMontage;
-    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Anim") TObjectPtr<UAnimMontage> DashMontage;
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill")
+    float CooldownDuration = 8.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill")
+    float ParryWindowDuration = 0.5f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill")
+    float HitStopDuration = 0.5f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Time")
+    float HitStopTimeDilation = 0.01f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Time")
+    int32 HitStopDilationPriority = 20;
+
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill")
+    float CounterDamage = 300.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Camera")
+    float CameraKickbackAmount = 15.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Camera")
+    float CameraKickbackDuration = 0.3f;
+
+    /** Charge 섹션: 패링 시전 / Attack 섹션: 반격 */
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill|Anim")
+    TObjectPtr<UAnimMontage> SkillMontage;
 
     UPROPERTY()
     TWeakObjectPtr<USwordWeapon> Sword;
-
-    float HoldElapsed = 0.f;
-
-    bool    bIsDashing      = false;
-    float   DashElapsed     = 0.f;
-    FVector DashStart       = FVector::ZeroVector;
-    FVector DashDestination = FVector::ZeroVector;
-
-    bool  bIsStunned  = false;
-    float StunElapsed = 0.f;
-
-    int32 TimeDilationHandle = 0;
 };

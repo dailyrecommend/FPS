@@ -86,6 +86,15 @@ private:
     UPROPERTY(EditDefaultsOnly, Category = "Sword|Anim")
     float ReturnPoseDelay = 0.1f;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Sword|Kickback")
+    float KickbackPitchAmount = -1.5f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Sword|Kickback")
+    float KickbackYawAmount = 1.5f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Sword|Kickback")
+    float KickbackDuration = 0.12f;
+
     int32 ComboStep        = 0;
     bool  bInputWindowOpen = false;
     bool  bInputBuffered   = false;

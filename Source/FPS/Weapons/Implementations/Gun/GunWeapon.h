@@ -58,4 +58,10 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, Category = "Gun|Anim") TObjectPtr<UAnimMontage>   FireMontage;
     UPROPERTY(EditDefaultsOnly, Category = "Gun|FX")   TObjectPtr<UNiagaraSystem> BulletTrailFX;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Gun|Kickback")
+    float KickbackPitchAmount = -2.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Gun|Kickback")
+    float KickbackDuration = 0.15f;
 };

@@ -23,8 +23,7 @@ bool UGunWeapon::TryAttack_Implementation()
 
     FireHitscan(FireDamage, EHitType::Normal);
     PlayMontage(FireMontage);
-    TriggerCameraShake(.3f, 0.6f, .0f);
-    TriggerCameraKickback(-2.f, 0.f, 0.15f);
+    TriggerCameraKickback(KickbackPitchAmount, 0.f, KickbackDuration);
     StartCooldown();
     OnGunFired.Broadcast();
     return true;

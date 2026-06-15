@@ -38,6 +38,7 @@ public:
 
     virtual void TriggerShake_Implementation(float Magnitude, float Duration, float Frequency) override;
     virtual void TriggerKickback_Implementation(float PitchAmount, float YawAmount, float Duration) override;
+    virtual void TriggerPositionKickback_Implementation(float BackAmount, float Duration) override;
     
 protected:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType,
@@ -58,6 +59,7 @@ private:
     void TickHeight(float DeltaTime);
     void TickShake(float DeltaTime);
     void TickKickback(float DeltaTime);
+    void TickPositionKickback(float DeltaTime);
 
     UPROPERTY()
     TWeakObjectPtr<UCameraComponent> Camera;
@@ -90,4 +92,9 @@ private:
     float KickbackElapsed  = 0.f;
     float LastKickPitch    = 0.f;
     float LastKickYaw      = 0.f;
+
+    float PosKickbackAmount   = 0.f;
+    float PosKickbackDuration = 0.f;
+    float PosKickbackElapsed  = 0.f;
+    float CurrentDepthOffset  = 0.f;
 };

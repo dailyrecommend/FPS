@@ -50,4 +50,8 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Presentation")
 	void TriggerKickback(float PitchAmount, float YawAmount, float Duration);
+
+	/** 카메라를 뒤로 밀었다 복귀시키는 위치 킥백 (총기 반동 등) */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Presentation")
+	void TriggerPositionKickback(float BackAmount, float Duration);
 };

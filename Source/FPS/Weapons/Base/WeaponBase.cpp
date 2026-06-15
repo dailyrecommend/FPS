@@ -119,3 +119,10 @@ void UWeaponBase::TriggerCameraKickback(float PitchAmount, float YawAmount, floa
     if (!Effects) return;
     ICameraEffects::Execute_TriggerKickback(Effects, PitchAmount, YawAmount, Duration);
 }
+
+void UWeaponBase::TriggerCameraPositionKickback(float BackAmount, float Duration)
+{
+    UObject* Effects = CameraEffects.GetObject();
+    if (!Effects) return;
+    ICameraEffects::Execute_TriggerPositionKickback(Effects, BackAmount, Duration);
+}
