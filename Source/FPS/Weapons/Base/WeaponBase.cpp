@@ -1,4 +1,5 @@
 #include "Weapons/Base/WeaponBase.h"
+#include "Presentation/Interfaces/AnimationPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 #include "Components/MeshComponent.h"
@@ -77,7 +78,7 @@ void UWeaponBase::PlayMontage(UAnimMontage* Montage, float PlayRate)
     if (!Montage) return;
     UObject* Player = AnimationPlayer.GetObject();
     if (!Player) return;
-    IAnimationPlayer::Execute_PlayMontage(Player, Montage, PlayRate);
+    IAnimationPlayer::Execute_PlayMontage(Player, Montage, PlayRate, EAnimPriority::Attack);
 }
 
 void UWeaponBase::PlayMontageSection(UAnimMontage* Montage, FName SectionName, float PlayRate)
@@ -85,7 +86,7 @@ void UWeaponBase::PlayMontageSection(UAnimMontage* Montage, FName SectionName, f
     if (!Montage) return;
     UObject* Player = AnimationPlayer.GetObject();
     if (!Player) return;
-    IAnimationPlayer::Execute_PlayMontageSection(Player, Montage, SectionName, PlayRate);
+    IAnimationPlayer::Execute_PlayMontageSection(Player, Montage, SectionName, PlayRate, EAnimPriority::Attack);
 }
 
 void UWeaponBase::StopMontage(UAnimMontage* Montage, float BlendOutTime)

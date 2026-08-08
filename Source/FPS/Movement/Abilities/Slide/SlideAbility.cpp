@@ -1,7 +1,11 @@
 #include "Movement/Abilities/Slide/SlideAbility.h"
+#include "Weapons/Registry/WeaponRegistry.h"
+#include "Weapons/Base/WeaponBase.h"
+#include "Character/PlayerInputRouter.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "Components/CapsuleComponent.h"
 
 USlideAbility::USlideAbility()
 {
@@ -45,6 +49,15 @@ EActivationResult USlideAbility::OnTryActivate(const FAbilityContext& Context)
     MoveComp->Velocity                   = SlideDirection * BoostSpeed;
     MoveComp->GroundFriction             = 0.f;
     MoveComp->BrakingDecelerationWalking = 0.f;
+    SmoothedRollInput                    = 0.f;
+
+    // 캡슐 축소
+    UCapsuleComponent* Capsule = Owner->GetCapsuleComponent();
+    if (Capsule)
+    {
+        DefaultCapsuleHalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
+        Capsule->SetCapsuleHalfHeight(DefaultCapsuleHalfHeight + CapsuleHeightOffset);
+    }
 
     if (UObject* Effects = CameraEffects.GetObject())
     {
@@ -52,19 +65,34 @@ EActivationResult USlideAbility::OnTryActivate(const FAbilityContext& Context)
         RollHandle   = ICameraEffects::Execute_PushRollOffset  (Effects, 0.f,          RollInterpSpeed, CameraPriority);
     }
 
-    PlayMontage(SlideMontage);
-    LastMoveInput = Context.MoveInput;
+    UAnimMontage* Montage = nullptr;
+    if (WeaponRegistry)
+    {
+        TScriptInterface<IWeapon> CurrentWeapon = WeaponRegistry->GetCurrentWeapon();
+        if (UWeaponBase* WeaponBase = Cast<UWeaponBase>(CurrentWeapon.GetObject()))
+            Montage = WeaponBase->GetSlideMontage();
+    }
+    PlayMontage(Montage);
     return EActivationResult::Success;
 }
 
 void USlideAbility::OnDeactivate()
 {
+    ACharacter* Owner = GetOwnerSafe();
     UCharacterMovementComponent* MoveComp = GetMoveComp();
     if (MoveComp)
     {
         UCharacterMovementComponent* DefaultMove = MoveComp->GetClass()->GetDefaultObject<UCharacterMovementComponent>();
         MoveComp->GroundFriction             = DefaultMove ? DefaultMove->GroundFriction             : 8.f;
         MoveComp->BrakingDecelerationWalking = DefaultMove ? DefaultMove->BrakingDecelerationWalking : 2048.f;
+    }
+
+    // 캡슐 복원
+    if (Owner)
+    {
+        UCapsuleComponent* Capsule = Owner->GetCapsuleComponent();
+        if (Capsule)
+            Capsule->SetCapsuleHalfHeight(DefaultCapsuleHalfHeight);
     }
 
     if (UObject* Effects = CameraEffects.GetObject())
@@ -75,7 +103,12 @@ void USlideAbility::OnDeactivate()
     HeightHandle = 0;
     RollHandle   = 0;
 
-    StopMontage(SlideMontage);
+    if (WeaponRegistry)
+    {
+        TScriptInterface<IWeapon> CurrentWeapon = WeaponRegistry->GetCurrentWeapon();
+        if (UWeaponBase* WeaponBase = Cast<UWeaponBase>(CurrentWeapon.GetObject()))
+            StopMontage(WeaponBase->GetSlideMontage());
+    }
 }
 
 void USlideAbility::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -83,10 +116,10 @@ void USlideAbility::TickComponent(float DeltaTime, ELevelTick TickType,
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    if (bIsActive)
-        TickSlide(DeltaTime, LastMoveInput);
+    if (!bIsActive) return;
 
-    LastMoveInput = FVector2D::ZeroVector;
+    const FVector2D MoveInput = InputRouter ? InputRouter->GetCurrentMoveInput() : FVector2D::ZeroVector;
+    TickSlide(DeltaTime, MoveInput);
 }
 
 void USlideAbility::TickSlide(float DeltaTime, const FVector2D& MoveInput)
@@ -103,7 +136,10 @@ void USlideAbility::TickSlide(float DeltaTime, const FVector2D& MoveInput)
     TargetVel.Z                = MoveComp->Velocity.Z;
     MoveComp->Velocity         = TargetVel;
 
-    const float TargetRoll = MoveInput.X * MaxRollDegrees;
+    // 입력을 한 번 보간(ease-in) → CameraEffects에서 한 번 더 보간(ease-out) = ease-in-out
+    SmoothedRollInput = FMath::FInterpTo(SmoothedRollInput, MoveInput.X, DeltaTime, RollInputSmoothSpeed);
+
+    const float TargetRoll = SmoothedRollInput * MaxRollDegrees;
     if (UObject* Effects = CameraEffects.GetObject())
         ICameraEffects::Execute_UpdateRollOffset(Effects, RollHandle, TargetRoll);
 }

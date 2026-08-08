@@ -118,6 +118,25 @@ bool UCameraEffectsComponent::UpdateRollOffset_Implementation(int32 Handle, floa
     return Update(RollChannel, Handle, NewRollDegrees);
 }
 
+void UCameraEffectsComponent::TickSpeedFOV(float DeltaTime)
+{
+    if (!bSpeedFOVEnabled) return;
+
+    AActor* Owner = GetOwner();
+    if (!Owner) return;
+
+    const float Speed = Owner->GetVelocity().Size2D();
+    const float Range = FMath::Max(SpeedFOVMaxSpeed - SpeedFOVStartSpeed, 1.f);
+    const float Alpha = FMath::Clamp((Speed - SpeedFOVStartSpeed) / Range, 0.f, 1.f);
+    const float Target = SpeedFOVMaxOffset * Alpha;
+
+    // 채널에 상주하는 요청 하나를 매 프레임 갱신한다. 부드러운 보간은 TickFOV가 담당.
+    if (SpeedFOVHandle == 0)
+        SpeedFOVHandle = Push(FOVChannel, Target, SpeedFOVInterp, SpeedFOVPriority);
+    else
+        Update(FOVChannel, SpeedFOVHandle, Target);
+}
+
 void UCameraEffectsComponent::TickFOV(float DeltaTime)
 {
     UCameraComponent* Cam = Camera.Get();
@@ -164,6 +183,7 @@ void UCameraEffectsComponent::TickComponent(float DeltaTime, ELevelTick TickType
                                             FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    TickSpeedFOV(DeltaTime);
     TickFOV(DeltaTime);
     TickRoll(DeltaTime);
     TickHeight(DeltaTime);

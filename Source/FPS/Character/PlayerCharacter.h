@@ -91,5 +91,5 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "Health")      TObjectPtr<UHealthComponent>           Health;
 
     UPROPERTY(EditDefaultsOnly, Category = "HUD")        TSubclassOf<UPlayerHUDWidget>          HUDWidgetClass;
-    TObjectPtr<UPlayerHUDWidget>                         HUDWidget;
+    UPROPERTY()                                          TObjectPtr<UPlayerHUDWidget>           HUDWidget;
 };

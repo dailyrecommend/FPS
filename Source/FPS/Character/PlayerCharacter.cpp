@@ -117,7 +117,8 @@ void APlayerCharacter::TickLocomotion(float DeltaTime)
     if (!MoveComp) return;
 
     const float Speed      = GetVelocity().Size2D();
-    const bool  bInAir     = MoveComp->IsFalling();
+    const bool  bSliding   = SlideAbility && SlideAbility->IsAbilityActive_Implementation();
+    const bool  bInAir     = bSliding || MoveComp->IsFalling();
     const int32 WeaponType = AnimationPlayer->GetCurrentWeaponType();
 
     AnimationPlayer->SetLocomotionState(Speed, bInAir, WeaponType);
@@ -128,7 +129,7 @@ void APlayerCharacter::OnWeaponHit_Implementation(const FWeaponHitResult& Hit)
     // 패링 윈도우가 열려 있으면 피격 소비
     if (SwordSkill && IWeaponSkill::Execute_IsSkillActive(SwordSkill))
     {
-        if (SwordSkill->TryParry(Hit.HitActor))
+        if (SwordSkill->TryParry(Hit.Attacker))
             return;
     }
 
@@ -213,6 +214,8 @@ void APlayerCharacter::InjectAndRegisterAbilities()
         SlideAbility->InjectDependencies(this);
         SlideAbility->AttachCameraEffects(CameraEffects);
         SlideAbility->AttachAnimationPlayer(AnimationPlayer);
+        SlideAbility->AttachWeaponRegistry(WeaponRegistry);
+        SlideAbility->AttachInputRouter(InputRouter);
     }
 
     AbilityRegistry->Register(JumpAbility);

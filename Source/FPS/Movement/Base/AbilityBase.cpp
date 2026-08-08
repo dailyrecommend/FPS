@@ -1,4 +1,5 @@
 #include "Movement/Base/AbilityBase.h"
+#include "Presentation/Interfaces/AnimationPlayer.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
@@ -65,7 +66,7 @@ void UAbilityBase::PlayMontage(UAnimMontage* Montage, float PlayRate)
     if (!Montage) return;
     UObject* Player = AnimationPlayer.GetObject();
     if (!Player) return;
-    IAnimationPlayer::Execute_PlayMontage(Player, Montage, PlayRate);
+    IAnimationPlayer::Execute_PlayMontage(Player, Montage, PlayRate, EAnimPriority::Movement);
 }
 
 void UAbilityBase::StopMontage(UAnimMontage* Montage, float BlendOutTime)

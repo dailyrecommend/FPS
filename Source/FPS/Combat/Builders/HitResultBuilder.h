@@ -24,6 +24,8 @@ public:
 	FHitResultBuilder() = default;
 
 	FHitResultBuilder& From(AController* InInstigator);
+	/** 공격을 가한 액터를 지정한다. 패링 방향 판정과 반격 대상으로 쓰인다. */
+	FHitResultBuilder& By(AActor* InAttacker);
 	FHitResultBuilder& Target(AActor* Actor);
 	FHitResultBuilder& At(const FVector& Loc, const FVector& Normal);
 	FHitResultBuilder& WithDamage(float Damage);

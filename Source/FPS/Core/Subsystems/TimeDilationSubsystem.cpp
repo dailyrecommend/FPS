@@ -33,6 +33,8 @@ void UTimeDilationSubsystem::Deinitialize()
         World->GetTimerManager().ClearTimer(TickTimer);
 
     ActiveRequests.Empty();
+    UpdateCounterScales(1.f);   // 남아 있는 역보정을 되돌린다.
+
     Super::Deinitialize();
 }
 
@@ -83,6 +85,10 @@ void UTimeDilationSubsystem::CleanupDeadRequesters()
 void UTimeDilationSubsystem::RecomputeTarget()
 {
     CleanupDeadRequesters();
+
+    // 요청 집합이 바뀐 즉시 역보정을 정리한다. 블렌드가 필요 없는 경우
+    // Tick이 조기 반환하므로 ApplyDilation에만 맡기면 복구가 누락된다.
+    UpdateCounterScales(CurrentDilation);
 
     if (ActiveRequests.Num() == 0)
     {
@@ -149,6 +155,15 @@ void UTimeDilationSubsystem::ApplyDilation(float Dilation)
     if (AWorldSettings* Settings = World->GetWorldSettings())
         Settings->TimeDilation = Dilation;
 
+    UpdateCounterScales(Dilation);
+
+    OnTimeDilationChanged.Broadcast(Dilation);
+}
+
+void UTimeDilationSubsystem::UpdateCounterScales(float Dilation)
+{
+    TArray<TWeakObjectPtr<AActor>> StillScaled;
+
     for (const FActiveRequest& R : ActiveRequests)
     {
         AActor* Actor = R.RequesterWeak.Get();
@@ -158,6 +173,7 @@ void UTimeDilationSubsystem::ApplyDilation(float Dilation)
         {
             // Counter-scale the requester so they appear to move at normal speed.
             Actor->CustomTimeDilation = (Dilation > KINDA_SMALL_NUMBER) ? (1.f / Dilation) : 1.f;
+            StillScaled.AddUnique(Actor);
         }
         else
         {
@@ -165,5 +181,13 @@ void UTimeDilationSubsystem::ApplyDilation(float Dilation)
         }
     }
 
-    OnTimeDilationChanged.Broadcast(Dilation);
+    // Anyone we scaled before but who no longer holds a request goes back to normal.
+    for (const TWeakObjectPtr<AActor>& Weak : CounterScaledActors)
+    {
+        AActor* Actor = Weak.Get();
+        if (Actor && !StillScaled.Contains(Weak))
+            Actor->CustomTimeDilation = 1.f;
+    }
+
+    CounterScaledActors = MoveTemp(StillScaled);
 }

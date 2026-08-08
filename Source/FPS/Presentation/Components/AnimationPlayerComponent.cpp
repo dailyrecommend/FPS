@@ -15,22 +15,31 @@ UFPSAnimInstance* UAnimationPlayerComponent::GetFPSAnimInstance() const
     return Cast<UFPSAnimInstance>(M->GetAnimInstance());
 }
 
-void UAnimationPlayerComponent::PlayMontage_Implementation(UAnimMontage* Montage, float PlayRate)
+void UAnimationPlayerComponent::PlayMontage_Implementation(UAnimMontage* Montage, float PlayRate, EAnimPriority Priority)
 {
     if (!Montage) return;
     UFPSAnimInstance* Anim = GetFPSAnimInstance();
     if (!Anim) return;
+
+    if (CurrentMontage && Anim->Montage_IsPlaying(CurrentMontage) && Priority < CurrentPriority) return;
+
     Anim->Montage_Play(Montage, PlayRate <= 0.f ? 1.f : PlayRate);
+    CurrentMontage  = Montage;
+    CurrentPriority = Priority;
 }
 
-void UAnimationPlayerComponent::PlayMontageSection_Implementation(UAnimMontage* Montage, FName SectionName, float PlayRate)
+void UAnimationPlayerComponent::PlayMontageSection_Implementation(UAnimMontage* Montage, FName SectionName, float PlayRate, EAnimPriority Priority)
 {
     if (!Montage) return;
     UFPSAnimInstance* Anim = GetFPSAnimInstance();
     if (!Anim) return;
+
+    if (CurrentMontage && Anim->Montage_IsPlaying(CurrentMontage) && Priority < CurrentPriority) return;
 
     Anim->Montage_Play(Montage, PlayRate <= 0.f ? 1.f : PlayRate);
     Anim->Montage_JumpToSection(SectionName, Montage);
+    CurrentMontage  = Montage;
+    CurrentPriority = Priority;
 }
 
 void UAnimationPlayerComponent::StopMontage_Implementation(UAnimMontage* Montage, float BlendOutTime)

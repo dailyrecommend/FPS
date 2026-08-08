@@ -1,4 +1,5 @@
 #include "Weapons/Base/WeaponSkillBase.h"
+#include "Presentation/Interfaces/AnimationPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 
@@ -55,7 +56,7 @@ void UWeaponSkillBase::PlayMontageSection(UAnimMontage* Montage, FName SectionNa
     if (!Montage) return;
     UObject* Player = AnimationPlayer.GetObject();
     if (!Player) return;
-    IAnimationPlayer::Execute_PlayMontageSection(Player, Montage, SectionName, PlayRate);
+    IAnimationPlayer::Execute_PlayMontageSection(Player, Montage, SectionName, PlayRate, EAnimPriority::Skill);
 }
 
 void UWeaponSkillBase::PlayMontage(UAnimMontage* Montage, float PlayRate)
@@ -63,7 +64,7 @@ void UWeaponSkillBase::PlayMontage(UAnimMontage* Montage, float PlayRate)
     if (!Montage) return;
     UObject* Player = AnimationPlayer.GetObject();
     if (!Player) return;
-    IAnimationPlayer::Execute_PlayMontage(Player, Montage, PlayRate);
+    IAnimationPlayer::Execute_PlayMontage(Player, Montage, PlayRate, EAnimPriority::Skill);
 }
 
 void UWeaponSkillBase::StopMontage(UAnimMontage* Montage, float BlendOutTime)

@@ -31,8 +31,8 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "SwordSkill")
     FOnParrySuccess OnParrySuccess;
 
-    virtual bool IsSkillActive_Implementation()  const override { return bParryWindowOpen || bHitStopActive; }
-    virtual bool BlocksMovement_Implementation() const override { return bParryWindowOpen || bHitStopActive; }
+    virtual bool IsSkillActive_Implementation()  const override { return bParryWindowOpen || bHitStopPending || bHitStopActive; }
+    virtual bool BlocksMovement_Implementation() const override { return bParryWindowOpen || bHitStopPending || bHitStopActive; }
 
 protected:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType,
@@ -55,10 +55,17 @@ private:
     void ExecuteCounterAttack();
 
     void TickParryWindow(float UnscaledDelta);
+    void TickHitStopDelay(float UnscaledDelta);
     void TickHitStop(float UnscaledDelta);
 
     bool  bParryWindowOpen   = false;
     float ParryWindowElapsed = 0.f;
+
+    /** 이번 종료가 패링 성공에 의한 것인지. 성공이면 몽타주를 끊지 않고 Attack으로 잇는다. */
+    bool  bParryConsumed     = false;
+
+    bool  bHitStopPending    = false;
+    float HitStopDelayElapsed = 0.f;
 
     bool  bHitStopActive = false;
     float HitStopElapsed = 0.f;
@@ -73,6 +80,10 @@ private:
 
     UPROPERTY(EditDefaultsOnly, Category = "SwordSkill")
     float ParryWindowDuration = 0.5f;
+
+    /** 패링 성공부터 히트 스탑이 걸리기까지의 대기 시간. 반격 모션의 타격 프레임에 맞춘다. */
+    UPROPERTY(EditDefaultsOnly, Category = "SwordSkill")
+    float HitStopDelay = 0.1f;
 
     UPROPERTY(EditDefaultsOnly, Category = "SwordSkill")
     float HitStopDuration = 0.5f;

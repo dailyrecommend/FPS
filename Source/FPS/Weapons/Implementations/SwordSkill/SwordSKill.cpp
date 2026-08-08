@@ -19,10 +19,11 @@ USwordSkill::USwordSkill()
 
 bool USwordSkill::OnStartHold()
 {
-    if (bParryWindowOpen || bHitStopActive) return false;
+    if (bParryWindowOpen || bHitStopPending || bHitStopActive) return false;
 
     bParryWindowOpen   = true;
     ParryWindowElapsed = 0.f;
+    bParryConsumed     = false;
 
     PlayMontageSection(SkillMontage, TEXT("Charge"));
     return true;
@@ -36,12 +37,20 @@ void USwordSkill::OnEndHold()
 void USwordSkill::OnCancel()
 {
     CloseParryWindow();
-    StopMontage(SkillMontage);
+
+    // 패링 성공으로 끝난 경우엔 몽타주를 끊지 않는다.
+    // 끊으면 기본 포즈로 블렌드된 뒤 Attack이 나와서 동작이 끊겨 보인다.
+    if (!bParryConsumed)
+        StopMontage(SkillMontage);
+
     StartCooldown(CooldownDuration);
 }
 
 void USwordSkill::EndPlay(EEndPlayReason::Type Reason)
 {
+    bHitStopPending     = false;
+    HitStopDelayElapsed = 0.f;
+
     EndHitStop();
     Super::EndPlay(Reason);
 }
@@ -55,11 +64,26 @@ bool USwordSkill::TryParry(AActor* Attacker)
     if (!bParryWindowOpen) return false;
     if (!IsAttackerInFront(Attacker)) return false;
 
-    ParryTarget = Attacker;
+    ParryTarget    = Attacker;
+    bParryConsumed = true;
 
-    // 윈도우 닫고 bIsActive 해제 (Cancel → OnCancel → StopMontage(ChargeMontage))
+    // 윈도우를 닫고 bIsActive를 내린다. bParryConsumed 덕에 몽타주는 유지된다.
     Cancel();
-    StartHitStop();
+
+    // Attack을 히트 스탑 뒤가 아니라 지금 재생한다. 시간 지연이 WorldOnly라
+    // 플레이어만 정상 속도로 움직여, 멈춘 월드 위에서 반격 모션이 나온다.
+    PlayMontageSection(SkillMontage, TEXT("Attack"));
+
+    // 히트 스탑은 곧바로가 아니라 HitStopDelay 뒤에 건다 — 반격의 타격 순간에 맞추기 위해.
+    if (HitStopDelay > 0.f)
+    {
+        bHitStopPending     = true;
+        HitStopDelayElapsed = 0.f;
+    }
+    else
+    {
+        StartHitStop();
+    }
 
     OnParrySuccess.Broadcast();
     return true;
@@ -117,6 +141,7 @@ void USwordSkill::EndHitStop()
 
     bHitStopActive = false;
     HitStopElapsed = 0.f;
+    bParryConsumed = false;
 
     ACharacter* Owner = GetOwnerSafe();
     if (Owner && Owner->GetWorld())
@@ -136,9 +161,7 @@ void USwordSkill::EndHitStop()
 
 void USwordSkill::ExecuteCounterAttack()
 {
-    // AttackMontage는 ChargeMontage와 별개 — Cancel로 중단되지 않음
-    PlayMontageSection(SkillMontage, TEXT("Attack"));
-
+    // 모션은 TryParry에서 이미 재생됐다. 여기서는 피해만 적용한다.
     AActor* Target = ParryTarget.Get();
     if (!Target || !Target->Implements<UDamageable>()) return;
 
@@ -169,6 +192,19 @@ void USwordSkill::TickParryWindow(float UnscaledDelta)
         Cancel();
 }
 
+void USwordSkill::TickHitStopDelay(float UnscaledDelta)
+{
+    if (!bHitStopPending) return;
+
+    HitStopDelayElapsed += UnscaledDelta;
+    if (HitStopDelayElapsed >= HitStopDelay)
+    {
+        bHitStopPending     = false;
+        HitStopDelayElapsed = 0.f;
+        StartHitStop();
+    }
+}
+
 void USwordSkill::TickHitStop(float UnscaledDelta)
 {
     if (!bHitStopActive) return;
@@ -185,6 +221,7 @@ void USwordSkill::TickComponent(float DeltaTime, ELevelTick TickType,
 
     const float UnscaledDelta = FApp::GetDeltaTime();
     TickParryWindow(UnscaledDelta);
+    TickHitStopDelay(UnscaledDelta);
     TickHitStop(UnscaledDelta);
     TickCooldown(UnscaledDelta);
 }

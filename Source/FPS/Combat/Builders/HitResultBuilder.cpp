@@ -9,6 +9,12 @@ FHitResultBuilder& FHitResultBuilder::From(AController* InInstigator)
 	return *this;
 }
 
+FHitResultBuilder& FHitResultBuilder::By(AActor* InAttacker)
+{
+	Result.Attacker = InAttacker;
+	return *this;
+}
+
 FHitResultBuilder& FHitResultBuilder::Target(AActor* Actor)
 {
 	Result.HitActor = Actor;

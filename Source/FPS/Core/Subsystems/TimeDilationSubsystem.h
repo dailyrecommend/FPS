@@ -59,7 +59,18 @@ private:
     void ApplyDilation(float Dilation);
     void CleanupDeadRequesters();
 
+    /**
+     * Apply the counter-scale to current WorldOnly requesters and restore anyone who
+     * no longer has a request. Without the restore step the inverse scale would stay
+     * on the actor forever after its request is popped.
+     */
+    void UpdateCounterScales(float Dilation);
+
     TArray<FActiveRequest> ActiveRequests;
+
+    /** Actors currently carrying a counter-scale, so we know who to restore. */
+    TArray<TWeakObjectPtr<AActor>> CounterScaledActors;
+
     int32 NextHandle = 1;
 
     float CurrentDilation = 1.f;

@@ -54,6 +54,7 @@ private:
     /** Look up the owner's PlayerController. May return nullptr early in game start. */
     APlayerController* ResolveController() const;
 
+    void TickSpeedFOV(float DeltaTime);
     void TickFOV(float DeltaTime);
     void TickRoll(float DeltaTime);
     void TickHeight(float DeltaTime);
@@ -61,11 +62,21 @@ private:
     void TickKickback(float DeltaTime);
     void TickPositionKickback(float DeltaTime);
 
+    /** 속도에 비례해 FOV를 넓혀 속도감을 준다. 다른 FOV 요청보다 우선순위가 낮아 스킬 연출에 밀린다. */
+    UPROPERTY(EditDefaultsOnly, Category = "Camera|SpeedFOV") bool  bSpeedFOVEnabled   = true;
+    UPROPERTY(EditDefaultsOnly, Category = "Camera|SpeedFOV") float SpeedFOVStartSpeed = 600.f;
+    UPROPERTY(EditDefaultsOnly, Category = "Camera|SpeedFOV") float SpeedFOVMaxSpeed   = 2000.f;
+    UPROPERTY(EditDefaultsOnly, Category = "Camera|SpeedFOV") float SpeedFOVMaxOffset  = 15.f;
+    UPROPERTY(EditDefaultsOnly, Category = "Camera|SpeedFOV") float SpeedFOVInterp     = 4.f;
+    UPROPERTY(EditDefaultsOnly, Category = "Camera|SpeedFOV") int32 SpeedFOVPriority   = 0;
+
     UPROPERTY()
     TWeakObjectPtr<UCameraComponent> Camera;
 
     float BaseEyeHeight = 64.f;
     float DefaultFOV    = 90.f;
+
+    int32 SpeedFOVHandle = 0;
 
     TArray<FCameraEffectRequest> FOVChannel;
     TArray<FCameraEffectRequest> RollChannel;

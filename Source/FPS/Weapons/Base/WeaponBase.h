@@ -28,7 +28,9 @@ public:
     void AttachSkill(TScriptInterface<IWeaponSkill> InSkill)                { Skill           = InSkill; }
     void AttachAnimationPlayer(TScriptInterface<IAnimationPlayer> InPlayer) { AnimationPlayer = InPlayer; }
     void AttachCameraEffects(TScriptInterface<ICameraEffects> InEffects) { CameraEffects = InEffects; }
-    
+
+    UAnimMontage* GetSlideMontage() const { return SlideMontage; }
+
     UPROPERTY(BlueprintAssignable, Category = "Weapon")
     FOnWeaponAttack OnWeaponAttack;
 
@@ -62,6 +64,9 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, Category = "Weapon|Anim")
     TObjectPtr<UAnimMontage> DrawMontage;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Weapon|Anim")
+    TObjectPtr<UAnimMontage> SlideMontage;
 
     /** 장착/해제 시 가시성을 제어할 메쉬 컴포넌트 이름 */
     UPROPERTY(EditDefaultsOnly, Category = "Weapon")

@@ -17,8 +17,8 @@ class FPS_API UAnimationPlayerComponent
 public:
 	void InjectMesh(USkeletalMeshComponent* InMesh);
 
-	virtual void PlayMontage_Implementation(UAnimMontage* Montage, float PlayRate) override;
-	virtual void PlayMontageSection_Implementation(UAnimMontage* Montage, FName SectionName, float PlayRate) override;
+	virtual void PlayMontage_Implementation(UAnimMontage* Montage, float PlayRate, EAnimPriority Priority) override;
+	virtual void PlayMontageSection_Implementation(UAnimMontage* Montage, FName SectionName, float PlayRate, EAnimPriority Priority) override;
 	virtual void StopMontage_Implementation(UAnimMontage* Montage, float BlendOutTime) override;
 	virtual bool IsMontagePlaying_Implementation(UAnimMontage* Montage) const override;
 
@@ -34,5 +34,7 @@ private:
 	UPROPERTY()
 	TWeakObjectPtr<USkeletalMeshComponent> Mesh;
 
-	int32 CurrentWeaponType = 0;
+	int32          CurrentWeaponType    = 0;
+	EAnimPriority  CurrentPriority      = EAnimPriority::Movement;
+	UAnimMontage*  CurrentMontage       = nullptr;
 };
